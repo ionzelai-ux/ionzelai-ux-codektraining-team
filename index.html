@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>CODEK · Equipo</title>
+<meta name="theme-color" content="#0a0a0a">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0a0a;color:#ededed;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.45;min-height:100vh}
+header{background:#0d0d0d;border-bottom:1px solid #1f1f1f;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.brand{font-weight:900;letter-spacing:1px;color:#fff;font-size:16px}
+.brand .accent{color:#B23A3A}
+.brand-sub{font-size:10px;letter-spacing:3px;color:#888;margin-left:4px}
+.hi{font-size:12px;color:#bbb}
+.hi b{color:#fff;font-weight:700}
+.logout{background:none;border:1px solid #2a2a2a;color:#999;font-size:11px;padding:5px 10px;border-radius:6px;cursor:pointer;margin-left:10px;font-family:inherit}
+.logout:hover{border-color:#B23A3A;color:#fff}
+main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
+
+/* ---- LOGIN ---- */
+.login{max-width:340px;margin:60px auto 0;text-align:center;padding:0 16px}
+.login h1{font-size:22px;font-weight:900;color:#fff;margin-bottom:8px}
+.login p{font-size:13px;color:#999;margin-bottom:28px}
+.login input{width:100%;background:#141414;border:1.5px solid #2a2a2a;border-radius:10px;padding:14px 16px;color:#fff;font-size:18px;text-align:center;letter-spacing:3px;font-family:inherit;margin-bottom:14px}
+.login input:focus{outline:none;border-color:#B23A3A;background:#1a1010}
+.login button{width:100%;background:#B23A3A;border:none;color:#fff;font-size:15px;font-weight:700;padding:14px;border-radius:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px}
+.login button:hover{background:#c44848}
+.login button:disabled{opacity:.5;cursor:default}
+.login-err{color:#ff8888;font-size:13px;margin-top:10px;min-height:18px}
+
+/* ---- BANDEJA ---- */
+.bandeja-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.bandeja-head h2{font-size:17px;font-weight:800;color:#fff}
+.btn-refresh{background:#141414;border:1px solid #2a2a2a;color:#bbb;font-size:12px;padding:7px 11px;border-radius:7px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn-refresh:hover{border-color:#B23A3A;color:#fff}
+.empty{padding:50px 20px;text-align:center;color:#777;background:#0f0f0f;border:1px dashed #2a2a2a;border-radius:10px}
+.empty b{color:#bbb;display:block;margin-bottom:6px;font-size:15px}
+
+.card{background:#121212;border:1px solid #1f1f1f;border-radius:12px;padding:14px;margin-bottom:11px;transition:border-color .12s}
+.card:hover{border-color:#3a3a3a}
+.card.con-parte{opacity:.55}
+.card.rechazado{border-color:#7a3030;background:#1a0d0d}
+.card-top{display:flex;gap:10px;align-items:flex-start}
+.av{width:38px;height:38px;border-radius:50%;background:#B23A3A;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.card-info{flex:1;min-width:0}
+.card-name{font-size:15px;font-weight:800;color:#fff;margin-bottom:3px}
+.card-tags{display:flex;flex-wrap:wrap;gap:5px}
+.tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;background:#1f1f1f;color:#bbb}
+.tag.interes{background:#1a0d10;color:#e89999}
+.tag.proc{background:#10171f;color:#88aade}
+.tag.parte-ok{background:#0f1f0f;color:#8bdc8b}
+.tag.parte-rech{background:#3a1010;color:#ff9090}
+.nota-jon{margin-top:10px;background:#1a1408;border-left:3px solid #BA7517;border-radius:6px;padding:8px 10px;font-size:13px;color:#e8d5a8}
+.nota-jon b{color:#FAC775;font-weight:700;display:block;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+.nota-rech{margin-top:10px;background:#1f0f0f;border-left:3px solid #B23A3A;border-radius:6px;padding:8px 10px;font-size:13px;color:#ffb8b8}
+.nota-rech b{color:#ff8080;font-weight:700;display:block;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+.card-actions{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn-call{background:#1B7A3D;color:#fff;border:none;font-size:14px;font-weight:700;padding:11px;border-radius:8px;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-call:hover{background:#239848}
+.btn-parte{background:#B23A3A;color:#fff;border:none;font-size:14px;font-weight:700;padding:11px;border-radius:8px;cursor:pointer;font-family:inherit}
+.btn-parte:hover{background:#c44848}
+.btn-parte.completado{background:#2a2a2a;color:#888;cursor:default}
+.btn-detalle{background:none;border:none;color:#888;font-size:12px;margin-top:8px;cursor:pointer;font-family:inherit;text-decoration:underline}
+.btn-detalle:hover{color:#fff}
+.detalle{margin-top:10px;background:#0a0a0a;border:1px solid #1f1f1f;border-radius:8px;padding:10px;font-size:12px;color:#bbb;display:none;line-height:1.55}
+.detalle.open{display:block}
+.detalle .row{display:flex;gap:8px;padding:3px 0}
+.detalle .row b{color:#999;min-width:88px;font-weight:600}
+.detalle .row span{color:#ddd;word-break:break-word}
+.detalle .historial{margin-top:8px;padding-top:8px;border-top:1px solid #1f1f1f;white-space:pre-wrap;color:#aaa;font-size:11.5px;max-height:200px;overflow-y:auto}
+
+/* ---- MODAL PARTE ---- */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:18px 14px;overflow-y:auto}
+.modal-ov.open{display:flex}
+.modal{background:#121212;border:1.5px solid #2a2a2a;border-radius:14px;width:100%;max-width:520px;color:#ededed;padding:18px;position:relative;margin-top:20px}
+.modal-close{position:absolute;top:12px;right:12px;width:30px;height:30px;border:none;background:#1a1a1a;color:#bbb;border-radius:50%;cursor:pointer;font-size:15px;font-weight:700}
+.modal-close:hover{background:#B23A3A;color:#fff}
+.modal h3{font-size:16px;font-weight:800;color:#fff;margin-bottom:4px;padding-right:30px}
+.modal .sub-modal{font-size:12px;color:#888;margin-bottom:14px}
+.modal label{display:block;font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px}
+.modal input[type=text],.modal input[type=date],.modal input[type=time],.modal textarea,.modal select{
+  width:100%;background:#0a0a0a;border:1.5px solid #2a2a2a;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;font-family:inherit
+}
+.modal input:focus,.modal textarea:focus,.modal select:focus{outline:none;border-color:#B23A3A}
+.modal textarea{min-height:70px;resize:vertical;line-height:1.45}
+.modal .res-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.modal .res-btn{background:#0a0a0a;border:1.5px solid #2a2a2a;border-radius:8px;padding:14px 6px;color:#bbb;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center}
+.modal .res-btn:hover{border-color:#444;color:#fff}
+.modal .res-btn.sel{background:#1a0d10;border-color:#B23A3A;color:#fff}
+.modal .res-btn.sel-ok{background:#0f1f0f;border-color:#1B7A3D;color:#fff}
+.fila-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fila-3{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bloque{background:#0a0a0a;border:1px dashed #2a2a2a;border-radius:8px;padding:10px;margin-top:10px}
+.bloque .titulo{font-size:11px;font-weight:700;color:#FAC775;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.toggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#bbb;margin-top:6px;padding:8px;border-radius:6px;background:#0a0a0a;border:1px solid #1f1f1f}
+.toggle input{accent-color:#B23A3A;width:18px;height:18px}
+.btn-enviar{width:100%;background:#B23A3A;color:#fff;border:none;font-size:15px;font-weight:800;padding:14px;border-radius:9px;cursor:pointer;font-family:inherit;margin-top:18px;letter-spacing:.3px}
+.btn-enviar:hover{background:#c44848}
+.btn-enviar:disabled{opacity:.5;cursor:default}
+.err{color:#ff8888;font-size:13px;margin-top:8px;text-align:center;min-height:18px}
+.ok-msg{text-align:center;padding:40px 20px}
+.ok-msg .check{font-size:60px;color:#5ac96e;line-height:1;margin-bottom:10px}
+.ok-msg h3{font-size:20px;color:#fff;margin-bottom:6px;font-weight:800}
+.ok-msg p{font-size:13px;color:#999}
+
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #333;border-top-color:#B23A3A;border-radius:50%;animation:sp 0.7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.loading{text-align:center;color:#777;padding:50px 20px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="vLogin" class="login">
+  <h1><span style="color:#B23A3A">CODEK</span> · Equipo</h1>
+  <p>Introduce tu PIN para acceder</p>
+  <form id="loginForm" onsubmit="event.preventDefault();hacerLogin();">
+    <input type="text" id="loginPin" placeholder="PIN" autocomplete="off" inputmode="text" required>
+    <button type="submit" id="loginBtn">Entrar</button>
+    <div class="login-err" id="loginErr"></div>
+  </form>
+</div>
+
+<!-- HEADER + BANDEJA -->
+<header id="hdr" style="display:none">
+  <div>
+    <span class="brand"><span class="accent">CODEK</span><span class="brand-sub">EQUIPO</span></span>
+  </div>
+  <div>
+    <span class="hi">Hola, <b id="hiNombre">—</b></span>
+    <button class="logout" onclick="hacerLogout()">Salir</button>
+  </div>
+</header>
+
+<main id="vMain" style="display:none">
+  <div class="bandeja-head">
+    <h2>Tus leads de hoy</h2>
+    <button class="btn-refresh" onclick="cargarLeads()">↻ Actualizar</button>
+  </div>
+  <div id="bandeja"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
+</main>
+
+<!-- MODAL PARTE -->
+<div class="modal-ov" id="modalParte">
+  <div class="modal" id="modalParteBox">
+    <button class="modal-close" onclick="cerrarParte()">×</button>
+    <div id="modalParteBody"></div>
+  </div>
+</div>
+
+<script>
+var SYNC_URL='https://script.google.com/macros/s/AKfycbxLrYar_Enx5Uk49uXtxi0ok87eFZaNGuMYllbAx0KlFNu8A6kaFJFUAHm1hiJ2r4SxRg/exec';
+var TOKEN='codek-9fK2mP7qX4';
+var SESSION = null;
+var LEADS = [];
+
+// ---- Persistencia sesión ----
+function saveSession(s){try{localStorage.setItem('codek_team',JSON.stringify(s));}catch(e){}}
+function loadSession(){try{var v=localStorage.getItem('codek_team');return v?JSON.parse(v):null;}catch(e){return null;}}
+function clearSession(){try{localStorage.removeItem('codek_team');}catch(e){}}
+
+// ---- JSONP helper ----
+function jsonp(params, cb){
+  var name = '_cb_'+Date.now()+Math.floor(Math.random()*10000);
+  var done=false;
+  var script=document.createElement('script');
+  window[name] = function(resp){
+    if(done)return;done=true;
+    try{delete window[name];}catch(e){window[name]=null;}
+    if(script.parentNode)script.parentNode.removeChild(script);
+    cb(resp);
+  };
+  var url = SYNC_URL+'?token='+encodeURIComponent(TOKEN);
+  Object.keys(params).forEach(function(k){
+    url += '&'+k+'='+encodeURIComponent(params[k]);
+  });
+  url += '&callback='+name;
+  script.src = url;
+  script.onerror = function(){if(!done){done=true;cb({ok:false,error:'red'});}};
+  document.body.appendChild(script);
+  setTimeout(function(){if(!done){done=true;cb({ok:false,error:'timeout'});}},15000);
+}
+
+// ---- LOGIN ----
+function hacerLogin(){
+  var pin = document.getElementById('loginPin').value.trim();
+  var err = document.getElementById('loginErr');
+  var btn = document.getElementById('loginBtn');
+  err.textContent='';
+  if(!pin){err.textContent='Introduce tu PIN';return;}
+  btn.disabled=true;btn.textContent='Comprobando…';
+  jsonp({action:'login_team', pin:pin}, function(r){
+    btn.disabled=false;btn.textContent='Entrar';
+    if(r && r.ok && r.entrenador){
+      SESSION = r.entrenador;
+      saveSession(SESSION);
+      mostrarBandeja();
+      cargarLeads();
+    } else {
+      err.textContent='PIN no válido. Inténtalo de nuevo.';
+      document.getElementById('loginPin').select();
+    }
+  });
+}
+
+function hacerLogout(){
+  clearSession();
+  SESSION = null;
+  LEADS = [];
+  document.getElementById('vMain').style.display='none';
+  document.getElementById('hdr').style.display='none';
+  document.getElementById('vLogin').style.display='block';
+  document.getElementById('loginPin').value='';
+}
+
+function mostrarBandeja(){
+  document.getElementById('vLogin').style.display='none';
+  document.getElementById('hdr').style.display='flex';
+  document.getElementById('vMain').style.display='block';
+  document.getElementById('hiNombre').textContent = SESSION.nombre;
+}
+
+// ---- CARGAR LEADS ASIGNADOS ----
+function cargarLeads(){
+  if(!SESSION) return;
+  var b = document.getElementById('bandeja');
+  b.innerHTML = '<div class="loading"><span class="spinner"></span>Cargando…</div>';
+  jsonp({action:'mis_leads', id_entrenador:SESSION.id, pin:SESSION.pin}, function(r){
+    if(!r || !r.ok){
+      if(r && r.error==='pin'){ hacerLogout(); return; }
+      b.innerHTML = '<div class="empty"><b>No se ha podido cargar.</b>Reintenta en un momento o pulsa Salir y vuelve a entrar.</div>';
+      return;
+    }
+    LEADS = r.leads || [];
+    renderBandeja();
+  });
+}
+
+function iniciales(s){ if(!s) return '?'; var p=s.trim().split(/\\s+/); return ((p[0]||'').charAt(0)+(p[1]||'').charAt(0)).toUpperCase()||'?'; }
+
+function renderBandeja(){
+  var b = document.getElementById('bandeja');
+  if(!LEADS.length){
+    b.innerHTML = '<div class="empty"><b>¡Sin leads asignados!</b>Cuando Jon te asigne llamadas, aparecerán aquí.</div>';
+    return;
+  }
+  var pendientes = LEADS.filter(function(l){return !l.con_parte || l.parte_estado==='rechazado';});
+  var hechos = LEADS.filter(function(l){return l.con_parte && l.parte_estado!=='rechazado';});
+
+  var h = '';
+  pendientes.forEach(function(L){ h += tarjeta(L); });
+  if(hechos.length){
+    h += '<div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin:20px 0 8px;padding-left:4px">Ya con parte enviado</div>';
+    hechos.forEach(function(L){ h += tarjeta(L); });
+  }
+  b.innerHTML = h;
+}
+
+function tarjeta(L){
+  var clase = 'card';
+  if(L.con_parte && L.parte_estado==='pendiente') clase += ' con-parte';
+  if(L.parte_estado==='rechazado') clase += ' rechazado';
+
+  var tags = '';
+  if(L.interes) tags += '<span class="tag interes">'+escapeHtml(L.interes)+'</span>';
+  if(L.procedencia) tags += '<span class="tag proc">'+escapeHtml(L.procedencia)+'</span>';
+  if(L.con_parte && L.parte_estado==='pendiente') tags += '<span class="tag parte-ok">Parte enviado · Pendiente revisión</span>';
+  if(L.parte_estado==='rechazado') tags += '<span class="tag parte-rech">⚠ Parte rechazado · corrige y reenvía</span>';
+
+  var notaJon = L.nota_jon ? '<div class="nota-jon"><b>📌 Nota de Jon</b>'+escapeHtml(L.nota_jon)+'</div>' : '';
+  var notaRech = (L.parte_estado==='rechazado' && L.parte_rechazo) ? '<div class="nota-rech"><b>Motivo del rechazo</b>'+escapeHtml(L.parte_rechazo)+'</div>' : '';
+
+  var telLink = L.tel ? '<a class="btn-call" href="tel:'+encodeURIComponent(L.tel)+'">📞 Llamar</a>' : '<button class="btn-call" disabled style="opacity:.4">Sin tel.</button>';
+  var btnParte;
+  if(L.con_parte && L.parte_estado==='pendiente'){
+    btnParte = '<button class="btn-parte completado" disabled>✓ Parte enviado</button>';
+  } else if(L.parte_estado==='rechazado'){
+    btnParte = '<button class="btn-parte" onclick="abrirParte(\''+L.id_asignacion+'\')">Corregir parte</button>';
+  } else {
+    btnParte = '<button class="btn-parte" onclick="abrirParte(\''+L.id_asignacion+'\')">📝 Hacer parte</button>';
+  }
+
+  return '<div class="'+clase+'">'+
+    '<div class="card-top">'+
+      '<div class="av">'+iniciales(L.nombre||L.tel)+'</div>'+
+      '<div class="card-info">'+
+        '<div class="card-name">'+escapeHtml(L.nombre||'(sin nombre)')+'</div>'+
+        '<div class="card-tags">'+tags+'</div>'+
+      '</div>'+
+    '</div>'+
+    notaJon + notaRech +
+    '<div class="card-actions">'+telLink+btnParte+'</div>'+
+    '<button class="btn-detalle" onclick="toggleDetalle(\''+L.id_asignacion+'\')">Ver historial del lead</button>'+
+    '<div class="detalle" id="det_'+L.id_asignacion+'"><div class="loading"><span class="spinner"></span>Cargando…</div></div>'+
+  '</div>';
+}
+
+function escapeHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ---- DETALLE ----
+function toggleDetalle(idAsig){
+  var L = LEADS.filter(function(x){return x.id_asignacion===idAsig;})[0];
+  if(!L) return;
+  var d = document.getElementById('det_'+idAsig);
+  if(d.classList.contains('open')){ d.classList.remove('open'); return; }
+  d.classList.add('open');
+  if(d.dataset.loaded==='1') return;
+  jsonp({action:'detalle_lead', id:L.id_lead, id_entrenador:SESSION.id, pin:SESSION.pin}, function(r){
+    if(!r || !r.ok){ d.innerHTML='<i>No se pudo cargar el detalle.</i>'; return; }
+    var L2 = r.lead;
+    var rows = '';
+    if(L2.tel) rows += '<div class="row"><b>Teléfono</b><span>'+escapeHtml(L2.tel)+'</span></div>';
+    if(L2.mail) rows += '<div class="row"><b>Email</b><span>'+escapeHtml(L2.mail)+'</span></div>';
+    if(L2.interes) rows += '<div class="row"><b>Interés</b><span>'+escapeHtml(L2.interes)+'</span></div>';
+    if(L2.procedencia) rows += '<div class="row"><b>Procedencia</b><span>'+escapeHtml(L2.procedencia)+'</span></div>';
+    if(L2.estado) rows += '<div class="row"><b>Estado actual</b><span>'+escapeHtml(L2.estado)+'</span></div>';
+    if(L2.fechaGestion) rows += '<div class="row"><b>Entró el</b><span>'+escapeHtml(L2.fechaGestion)+'</span></div>';
+    if(L2.fechaVisita) rows += '<div class="row"><b>Visita</b><span>'+escapeHtml(L2.fechaVisita)+(L2.horaVisita?' a las '+escapeHtml(L2.horaVisita):'')+'</span></div>';
+    var hist = L2.nota?'<div class="historial">'+escapeHtml(L2.nota)+'</div>':'';
+    d.innerHTML = rows + hist;
+    d.dataset.loaded='1';
+  });
+}
+
+// ---- MODAL PARTE ----
+var PARTE_ACTUAL = {id_asignacion:null, resultado:null};
+function abrirParte(idAsig){
+  var L = LEADS.filter(function(x){return x.id_asignacion===idAsig;})[0];
+  if(!L) return;
+  PARTE_ACTUAL = {id_asignacion:idAsig, lead:L, resultado:null};
+  renderParte();
+  document.getElementById('modalParte').classList.add('open');
+}
+function cerrarParte(){
+  document.getElementById('modalParte').classList.remove('open');
+  PARTE_ACTUAL = {id_asignacion:null, resultado:null};
+}
+
+function renderParte(){
+  var L = PARTE_ACTUAL.lead;
+  var body = document.getElementById('modalParteBody');
+  body.innerHTML =
+    '<h3>📝 Parte de llamada</h3>'+
+    '<p class="sub-modal">'+escapeHtml(L.nombre||'(sin nombre)')+' · '+escapeHtml(L.tel||'')+'</p>'+
+
+    '<label>¿Qué pasó al llamar?</label>'+
+    '<div class="res-grid">'+
+      '<button type="button" class="res-btn" data-res="cogio" onclick="elegirRes(\'cogio\')">📞 Cogió</button>'+
+      '<button type="button" class="res-btn" data-res="no_cogio" onclick="elegirRes(\'no_cogio\')">❌ No cogió</button>'+
+      '<button type="button" class="res-btn" data-res="buzon" onclick="elegirRes(\'buzon\')">📭 Buzón de voz</button>'+
+      '<button type="button" class="res-btn" data-res="ocupado" onclick="elegirRes(\'ocupado\')">🔇 Comunicaba</button>'+
+    '</div>'+
+
+    '<div id="bloqueDetalle" style="display:none">'+
+
+      '<label>Qué te dijo / qué quiere</label>'+
+      '<textarea id="pNota" placeholder="Resume la conversación: qué quería, qué le interesó, dudas..."></textarea>'+
+
+      '<div class="bloque" id="bloqueEstado">'+
+        '<div class="titulo">¿Cambia de estado?</div>'+
+        '<select id="pEstado">'+
+          '<option value="">— Dejar como está —</option>'+
+          '<option value="E2">E2 · Interés WAS (le interesa, mandar más info por WA)</option>'+
+          '<option value="E3">E3 · No contesta / no interesado</option>'+
+          '<option value="E4">E4 · Quiere reservar clase de prueba</option>'+
+          '<option value="E5">E5 · Reserva confirmada (tienes fecha de visita)</option>'+
+          '<option value="E6">E6 · Ya ha visitado el gimnasio</option>'+
+          '<option value="E7">E7 · Quiere contratar</option>'+
+          '<option value="E9">E9 · Basura / no es nuestro perfil</option>'+
+        '</select>'+
+
+        '<div id="visitaBox" style="display:none;margin-top:8px">'+
+          '<label>Fecha y hora de la visita</label>'+
+          '<div class="fila-2">'+
+            '<input type="date" id="pVisitaFecha">'+
+            '<input type="time" id="pVisitaHora" step="900">'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+
+      '<div class="bloque">'+
+        '<div class="titulo">¿Hay que volver a llamarle o escribirle?</div>'+
+        '<div class="fila-3">'+
+          '<input type="date" id="pProxFecha">'+
+          '<input type="time" id="pProxHora" step="900">'+
+        '</div>'+
+        '<input type="text" id="pProxNota" placeholder="Motivo (ej: confirma cuando lo hable con su mujer)" style="margin-top:6px">'+
+      '</div>'+
+
+      '<div class="bloque">'+
+        '<div class="titulo">¿Quieres que Jon le mande un WhatsApp?</div>'+
+        '<label class="toggle"><input type="checkbox" id="pSugWa" onchange="toggleWA(this.checked)"> Sí, sugerir mensaje de WhatsApp</label>'+
+        '<div id="waBox" style="display:none;margin-top:8px">'+
+          '<textarea id="pTextoWa" placeholder="Sugiere el texto del mensaje que Jon debería mandarle (Jon decide si lo envía tal cual o lo ajusta)."></textarea>'+
+        '</div>'+
+      '</div>'+
+
+    '</div>'+
+
+    '<div class="err" id="parteErr"></div>'+
+    '<button class="btn-enviar" id="parteEnviar" onclick="enviarParte()" style="display:none">Enviar parte a Jon</button>';
+}
+
+function elegirRes(r){
+  PARTE_ACTUAL.resultado = r;
+  document.querySelectorAll('.res-btn').forEach(function(b){
+    b.classList.remove('sel','sel-ok');
+    if(b.dataset.res===r) b.classList.add(r==='cogio'?'sel-ok':'sel');
+  });
+  document.getElementById('bloqueDetalle').style.display='block';
+  document.getElementById('parteEnviar').style.display='block';
+  // Si no cogió, ocultamos cambio de estado (no tiene sentido cambiar el estado sin haber hablado)
+  document.getElementById('bloqueEstado').style.display = (r==='cogio') ? 'block' : 'none';
+}
+
+function toggleWA(on){
+  document.getElementById('waBox').style.display = on?'block':'none';
+}
+
+// Mostrar fecha visita si estado es E5
+document.addEventListener('change', function(e){
+  if(e.target && e.target.id==='pEstado'){
+    document.getElementById('visitaBox').style.display = (e.target.value==='E5')?'block':'none';
+  }
+});
+
+function enviarParte(){
+  var err = document.getElementById('parteErr'); err.textContent='';
+  if(!PARTE_ACTUAL.resultado){err.textContent='Marca primero qué pasó al llamar.';return;}
+  var btn = document.getElementById('parteEnviar');
+  btn.disabled=true;btn.textContent='Enviando…';
+
+  var params = {
+    action:'enviar_parte',
+    id_asignacion: PARTE_ACTUAL.id_asignacion,
+    id_entrenador: SESSION.id,
+    pin: SESSION.pin,
+    resultado: PARTE_ACTUAL.resultado,
+    nota_entrenador: document.getElementById('pNota').value.trim(),
+    propuesta_estado: document.getElementById('pEstado').value,
+    propuesta_prox_fecha: document.getElementById('pProxFecha').value,
+    propuesta_prox_hora: document.getElementById('pProxHora').value,
+    propuesta_prox_tipo: document.getElementById('pProxFecha').value ? 'llamada' : '',
+    propuesta_prox_nota: document.getElementById('pProxNota').value.trim(),
+    propuesta_visita_fecha: document.getElementById('pVisitaFecha').value,
+    propuesta_visita_hora: document.getElementById('pVisitaHora').value,
+    sugerir_wa: document.getElementById('pSugWa').checked ? 'true' : 'false',
+    texto_wa: document.getElementById('pTextoWa').value.trim()
+  };
+
+  jsonp(params, function(r){
+    btn.disabled=false;btn.textContent='Enviar parte a Jon';
+    if(r && r.ok){
+      document.getElementById('modalParteBody').innerHTML =
+        '<div class="ok-msg"><div class="check">✓</div><h3>Parte enviado</h3><p>Jon lo revisará y actualizará la ficha del lead. Gracias.</p></div>'+
+        '<button class="btn-enviar" onclick="cerrarParte();cargarLeads()">Cerrar</button>';
+    } else {
+      err.textContent = (r && r.error) ? ('Error: '+r.error) : 'No se ha podido enviar. Inténtalo de nuevo.';
+    }
+  });
+}
+
+// ---- INIT ----
+(function init(){
+  var s = loadSession();
+  if(s && s.id && s.pin){
+    // Validamos contra el backend antes de fiarnos
+    SESSION = s;
+    jsonp({action:'mis_leads', id_entrenador:s.id, pin:s.pin}, function(r){
+      if(r && r.ok){
+        mostrarBandeja();
+        LEADS = r.leads || [];
+        renderBandeja();
+      } else {
+        clearSession();
+        document.getElementById('vLogin').style.display='block';
+      }
+    });
+  } else {
+    document.getElementById('vLogin').style.display='block';
+  }
+})();
+
+// Auto-refresh cada 2 min
+setInterval(function(){ if(SESSION) cargarLeads(); }, 120000);
+document.addEventListener('visibilitychange', function(){ if(!document.hidden && SESSION) cargarLeads(); });
+</script>
+</body>
+</html>
