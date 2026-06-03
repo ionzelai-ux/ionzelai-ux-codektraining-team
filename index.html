@@ -114,12 +114,9 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 <!-- LOGIN -->
 <div id="vLogin" class="login">
   <h1><span style="color:#B23A3A">CODEK</span> · Equipo</h1>
-  <p>Introduce tu PIN para acceder</p>
-  <form id="loginForm" onsubmit="event.preventDefault();hacerLogin();">
-    <input type="text" id="loginPin" placeholder="PIN" autocomplete="off" inputmode="text" required>
-    <button type="submit" id="loginBtn">Entrar</button>
-    <div class="login-err" id="loginErr"></div>
-  </form>
+  <p>¿Quién eres?</p>
+  <div id="loginBtns" style="display:flex;flex-direction:column;gap:12px"></div>
+  <div class="login-err" id="loginErr"></div>
 </div>
 
 <!-- HEADER + BANDEJA -->
@@ -182,26 +179,32 @@ function jsonp(params, cb){
   setTimeout(function(){if(!done){done=true;cb({ok:false,error:'timeout'});}},15000);
 }
 
-// ---- LOGIN ----
-function hacerLogin(){
-  var pin = document.getElementById('loginPin').value.trim();
-  var err = document.getElementById('loginErr');
-  var btn = document.getElementById('loginBtn');
-  err.textContent='';
-  if(!pin){err.textContent='Introduce tu PIN';return;}
-  btn.disabled=true;btn.textContent='Comprobando…';
-  jsonp({action:'login_team', pin:pin}, function(r){
-    btn.disabled=false;btn.textContent='Entrar';
-    if(r && r.ok && r.entrenador){
-      SESSION = r.entrenador;
-      saveSession(SESSION);
-      mostrarBandeja();
-      cargarLeads();
-    } else {
-      err.textContent='PIN no válido. Inténtalo de nuevo.';
-      document.getElementById('loginPin').select();
+// ---- LOGIN sin PIN: botones con los entrenadores ----
+function cargarBotonesLogin(){
+  var cont = document.getElementById('loginBtns');
+  if(!cont) return;
+  cont.innerHTML = '<div style="font-size:12px;color:#777">Cargando…</div>';
+  jsonp({action:'entrenadores'}, function(r){
+    var ents = (r && r.ok && r.entrenadores) ? r.entrenadores : [];
+    if(!ents.length){
+      cont.innerHTML = '<div class="login-err">No hay entrenadores configurados. Avisa a Jon.</div>';
+      return;
     }
+    cont.innerHTML = '';
+    ents.forEach(function(e){
+      var b = document.createElement('button');
+      b.type='button';
+      b.textContent = 'Soy ' + e.nombre;
+      b.onclick = function(){ entrarComo(e); };
+      cont.appendChild(b);
+    });
   });
+}
+function entrarComo(ent){
+  SESSION = {id:ent.id, nombre:ent.nombre};
+  saveSession(SESSION);
+  mostrarBandeja();
+  cargarLeads();
 }
 
 function hacerLogout(){
@@ -211,7 +214,7 @@ function hacerLogout(){
   document.getElementById('vMain').style.display='none';
   document.getElementById('hdr').style.display='none';
   document.getElementById('vLogin').style.display='block';
-  document.getElementById('loginPin').value='';
+  cargarBotonesLogin();
 }
 
 function mostrarBandeja(){
@@ -226,7 +229,7 @@ function cargarLeads(){
   if(!SESSION) return;
   var b = document.getElementById('bandeja');
   b.innerHTML = '<div class="loading"><span class="spinner"></span>Cargando…</div>';
-  jsonp({action:'mis_leads', id_entrenador:SESSION.id, pin:SESSION.pin}, function(r){
+  jsonp({action:'mis_leads', id_entrenador:SESSION.id}, function(r){
     if(!r || !r.ok){
       if(r && r.error==='pin'){ hacerLogout(); return; }
       b.innerHTML = '<div class="empty"><b>No se ha podido cargar.</b>Reintenta en un momento o pulsa Salir y vuelve a entrar.</div>';
@@ -306,7 +309,7 @@ function toggleDetalle(idAsig){
   if(d.classList.contains('open')){ d.classList.remove('open'); return; }
   d.classList.add('open');
   if(d.dataset.loaded==='1') return;
-  jsonp({action:'detalle_lead', id:L.id_lead, id_entrenador:SESSION.id, pin:SESSION.pin}, function(r){
+  jsonp({action:'detalle_lead', id:L.id_lead, id_entrenador:SESSION.id}, function(r){
     if(!r || !r.ok){ d.innerHTML='<i>No se pudo cargar el detalle.</i>'; return; }
     var L2 = r.lead;
     var rows = '';
@@ -475,7 +478,6 @@ function enviarParte(){
     action:'enviar_parte',
     id_asignacion: PARTE_ACTUAL.id_asignacion,
     id_entrenador: SESSION.id,
-    pin: SESSION.pin,
     resultado: PARTE_ACTUAL.resultado,
     nota_entrenador: document.getElementById('pNota').value.trim(),
     propuesta_estado: document.getElementById('pEstado').value,
@@ -504,10 +506,10 @@ function enviarParte(){
 // ---- INIT ----
 (function init(){
   var s = loadSession();
-  if(s && s.id && s.pin){
+  if(s && s.id){
     // Validamos contra el backend antes de fiarnos
     SESSION = s;
-    jsonp({action:'mis_leads', id_entrenador:s.id, pin:s.pin}, function(r){
+    jsonp({action:'mis_leads', id_entrenador:s.id}, function(r){
       if(r && r.ok){
         mostrarBandeja();
         LEADS = r.leads || [];
@@ -515,10 +517,12 @@ function enviarParte(){
       } else {
         clearSession();
         document.getElementById('vLogin').style.display='block';
+        cargarBotonesLogin();
       }
     });
   } else {
     document.getElementById('vLogin').style.display='block';
+    cargarBotonesLogin();
   }
 })();
 
@@ -527,4 +531,6 @@ setInterval(function(){ if(SESSION) cargarLeads(); }, 120000);
 document.addEventListener('visibilitychange', function(){ if(!document.hidden && SESSION) cargarLeads(); });
 </script>
 </body>
+</html>
+                          >
 </html>
