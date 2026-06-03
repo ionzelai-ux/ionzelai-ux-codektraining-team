@@ -329,12 +329,14 @@ function abrirParte(idAsig){
   var L = LEADS.filter(function(x){return x.id_asignacion===idAsig;})[0];
   if(!L) return;
   PARTE_ACTUAL = {id_asignacion:idAsig, lead:L, resultado:null};
+  PARTE_PROX_TIPO = '';
   renderParte();
   document.getElementById('modalParte').classList.add('open');
 }
 function cerrarParte(){
   document.getElementById('modalParte').classList.remove('open');
   PARTE_ACTUAL = {id_asignacion:null, resultado:null};
+  PARTE_PROX_TIPO = '';
 }
 
 function renderParte(){
@@ -380,19 +382,20 @@ function renderParte(){
       '</div>'+
 
       '<div class="bloque">'+
-        '<div class="titulo">¿Hay que volver a llamarle o escribirle?</div>'+
-        '<div class="fila-3">'+
-          '<input type="date" id="pProxFecha">'+
-          '<input type="time" id="pProxHora" step="900">'+
+        '<div class="titulo">¿Próximo contacto? (Jon lo verá en su agenda)</div>'+
+        '<div class="res-grid" style="margin-bottom:8px">'+
+          '<button type="button" class="res-btn" data-prox="" onclick="elegirProxTipo(\'\')">— Nada por ahora —</button>'+
+          '<button type="button" class="res-btn" data-prox="llamada" onclick="elegirProxTipo(\'llamada\')">📞 Llamada</button>'+
+          '<button type="button" class="res-btn" data-prox="mensaje" onclick="elegirProxTipo(\'mensaje\')">💬 Mensaje</button>'+
         '</div>'+
-        '<input type="text" id="pProxNota" placeholder="Motivo (ej: confirma cuando lo hable con su mujer)" style="margin-top:6px">'+
-      '</div>'+
-
-      '<div class="bloque">'+
-        '<div class="titulo">¿Quieres que Jon le mande un WhatsApp?</div>'+
-        '<label class="toggle"><input type="checkbox" id="pSugWa" onchange="toggleWA(this.checked)"> Sí, sugerir mensaje de WhatsApp</label>'+
-        '<div id="waBox" style="display:none;margin-top:8px">'+
-          '<textarea id="pTextoWa" placeholder="Sugiere el texto del mensaje que Jon debería mandarle (Jon decide si lo envía tal cual o lo ajusta)."></textarea>'+
+        '<div id="proxDetalle" style="display:none">'+
+          '<label id="proxLabelFecha" style="display:block;font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 6px">Fecha</label>'+
+          '<div class="fila-3">'+
+            '<input type="date" id="pProxFecha">'+
+            '<input type="time" id="pProxHora" step="900">'+
+          '</div>'+
+          '<label id="proxLabelTexto" style="display:block;font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px">Tema de la llamada</label>'+
+          '<textarea id="pProxNota" placeholder="Ej: confirma cuando lo hable con su mujer"></textarea>'+
         '</div>'+
       '</div>'+
 
@@ -414,8 +417,31 @@ function elegirRes(r){
   document.getElementById('bloqueEstado').style.display = (r==='cogio') ? 'block' : 'none';
 }
 
-function toggleWA(on){
-  document.getElementById('waBox').style.display = on?'block':'none';
+var PARTE_PROX_TIPO = '';
+function elegirProxTipo(t){
+  PARTE_PROX_TIPO = t;
+  document.querySelectorAll('button[data-prox]').forEach(function(b){
+    b.classList.remove('sel','sel-ok');
+    if(b.dataset.prox===t) b.classList.add(t==='mensaje'?'sel-ok':'sel');
+  });
+  var det = document.getElementById('proxDetalle');
+  var hora = document.getElementById('pProxHora');
+  var labelTexto = document.getElementById('proxLabelTexto');
+  var nota = document.getElementById('pProxNota');
+  if(!t){
+    det.style.display='none';
+    return;
+  }
+  det.style.display='block';
+  if(t==='llamada'){
+    hora.style.display='block';
+    labelTexto.textContent='Tema de la llamada';
+    nota.placeholder='Qué hay que tratar en la llamada (ej: confirmar día de la prueba).';
+  } else {
+    hora.style.display='none';
+    labelTexto.textContent='Texto del mensaje que Jon debe mandar';
+    nota.placeholder='Escribe el mensaje completo que Jon enviará por WhatsApp.';
+  }
 }
 
 // Mostrar fecha visita si estado es E5
@@ -431,6 +457,20 @@ function enviarParte(){
   var btn = document.getElementById('parteEnviar');
   btn.disabled=true;btn.textContent='Enviando…';
 
+  var proxTipo = PARTE_PROX_TIPO || '';
+  var proxFecha = document.getElementById('pProxFecha').value;
+  var proxHora = proxTipo==='llamada' ? document.getElementById('pProxHora').value : '';
+  var proxNota = document.getElementById('pProxNota').value.trim();
+  // Validación: si el entrenador eligió tipo, debe haber fecha
+  if(proxTipo && !proxFecha){
+    err.textContent='Has elegido tipo de contacto, pero falta poner la fecha.';
+    btn.disabled=false;btn.textContent='Enviar parte a Jon';
+    return;
+  }
+  // Si es mensaje, el texto se envía también como sugerencia de WA para que Jon lo vea fácil al aprobar
+  var sugWa = (proxTipo==='mensaje' && proxNota) ? 'true' : 'false';
+  var textoWa = (proxTipo==='mensaje') ? proxNota : '';
+
   var params = {
     action:'enviar_parte',
     id_asignacion: PARTE_ACTUAL.id_asignacion,
@@ -439,14 +479,14 @@ function enviarParte(){
     resultado: PARTE_ACTUAL.resultado,
     nota_entrenador: document.getElementById('pNota').value.trim(),
     propuesta_estado: document.getElementById('pEstado').value,
-    propuesta_prox_fecha: document.getElementById('pProxFecha').value,
-    propuesta_prox_hora: document.getElementById('pProxHora').value,
-    propuesta_prox_tipo: document.getElementById('pProxFecha').value ? 'llamada' : '',
-    propuesta_prox_nota: document.getElementById('pProxNota').value.trim(),
+    propuesta_prox_fecha: proxFecha,
+    propuesta_prox_hora: proxHora,
+    propuesta_prox_tipo: proxTipo,
+    propuesta_prox_nota: proxNota,
     propuesta_visita_fecha: document.getElementById('pVisitaFecha').value,
     propuesta_visita_hora: document.getElementById('pVisitaHora').value,
-    sugerir_wa: document.getElementById('pSugWa').checked ? 'true' : 'false',
-    texto_wa: document.getElementById('pTextoWa').value.trim()
+    sugerir_wa: sugWa,
+    texto_wa: textoWa
   };
 
   jsonp(params, function(r){
