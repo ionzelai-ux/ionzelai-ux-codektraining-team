@@ -95,6 +95,31 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .bloque .titulo{font-size:11px;font-weight:700;color:#FAC775;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
 .toggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#bbb;margin-top:6px;padding:8px;border-radius:6px;background:#0a0a0a;border:1px solid #1f1f1f}
 .toggle input{accent-color:#B23A3A;width:18px;height:18px}
+/* ---- TABS Y INFORME ---- */
+.tab-btn{flex:1;background:none;border:none;color:#888;font-size:13px;font-weight:700;padding:10px;border-radius:8px;cursor:pointer;font-family:inherit;transition:background .12s,color .12s}
+.tab-btn:hover{color:#fff}
+.tab-btn.tab-on{background:#B23A3A;color:#fff}
+.periodo-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.per-btn{flex:1;min-width:80px;background:#141414;border:1px solid #2a2a2a;color:#bbb;font-size:12px;font-weight:600;padding:8px;border-radius:7px;cursor:pointer;font-family:inherit}
+.per-btn:hover{border-color:#B23A3A;color:#fff}
+.per-btn.per-on{background:#B23A3A;border-color:#B23A3A;color:#fff}
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.stat-card{background:#121212;border:1px solid #1f1f1f;border-radius:10px;padding:14px 8px;text-align:center}
+.stat-card.cogio{border-color:#1B7A3D}
+.stat-card.nocogio{border-color:#A32D2D}
+.stat-num{font-size:26px;font-weight:900;color:#fff;line-height:1}
+.stat-card.cogio .stat-num{color:#5ac96e}
+.stat-card.nocogio .stat-num{color:#ff7a7a}
+.stat-lbl{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.7px;margin-top:5px}
+.inf-card{background:#121212;border:1px solid #1f1f1f;border-radius:10px;padding:11px 13px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.inf-card .inf-res{font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px;flex-shrink:0}
+.inf-res.cogio{background:#0f1f0f;color:#8bdc8b}
+.inf-res.no_cogio{background:#3a1010;color:#ff9090}
+.inf-res.buzon,.inf-res.ocupado{background:#1a1a1a;color:#bbb}
+.inf-card .inf-info{flex:1;min-width:0}
+.inf-card .inf-nombre{font-size:13px;font-weight:700;color:#fff;margin-bottom:2px}
+.inf-card .inf-meta{font-size:11px;color:#888}
+.inf-card .inf-nota{font-size:11px;color:#aaa;margin-top:4px;font-style:italic}
 .btn-enviar{width:100%;background:#B23A3A;color:#fff;border:none;font-size:15px;font-weight:800;padding:14px;border-radius:9px;cursor:pointer;font-family:inherit;margin-top:18px;letter-spacing:.3px}
 .btn-enviar:hover{background:#c44848}
 .btn-enviar:disabled{opacity:.5;cursor:default}
@@ -131,11 +156,37 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 </header>
 
 <main id="vMain" style="display:none">
-  <div class="bandeja-head">
-    <h2>Tus leads de hoy</h2>
-    <button class="btn-refresh" onclick="cargarLeads()">↻ Actualizar</button>
+  <div style="display:flex;gap:6px;margin-bottom:14px;padding:4px;background:#0f0f0f;border-radius:10px">
+    <button id="tabBandeja" class="tab-btn tab-on" onclick="mostrarTab('bandeja')">📋 Mis leads</button>
+    <button id="tabInforme" class="tab-btn" onclick="mostrarTab('informe')">📊 Mi informe</button>
   </div>
-  <div id="bandeja"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
+
+  <div id="viewBandeja">
+    <div class="bandeja-head">
+      <h2>Tus leads de hoy</h2>
+      <button class="btn-refresh" onclick="cargarLeads()">↻ Actualizar</button>
+    </div>
+    <div id="bandeja"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
+  </div>
+
+  <div id="viewInforme" style="display:none">
+    <div class="bandeja-head">
+      <h2>Mi informe</h2>
+      <button class="btn-refresh" onclick="cargarInforme()">↻ Actualizar</button>
+    </div>
+    <div class="periodo-btns" id="periodoBtns">
+      <button class="per-btn per-on" data-per="hoy" onclick="elegirPeriodo('hoy')">Hoy</button>
+      <button class="per-btn" data-per="ayer" onclick="elegirPeriodo('ayer')">Ayer</button>
+      <button class="per-btn" data-per="semana" onclick="elegirPeriodo('semana')">Esta semana</button>
+      <button class="per-btn" data-per="mes" onclick="elegirPeriodo('mes')">Este mes</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-num" id="stTotal">0</div><div class="stat-lbl">Llamadas</div></div>
+      <div class="stat-card cogio"><div class="stat-num" id="stCogio">0</div><div class="stat-lbl">Cogieron</div></div>
+      <div class="stat-card nocogio"><div class="stat-num" id="stNoCogio">0</div><div class="stat-lbl">No cogieron</div></div>
+    </div>
+    <div id="informeList"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
+  </div>
 </main>
 
 <!-- MODAL PARTE -->
@@ -241,6 +292,72 @@ function cargarLeads(){
 }
 
 function iniciales(s){ if(!s) return '?'; var p=s.trim().split(/\\s+/); return ((p[0]||'').charAt(0)+(p[1]||'').charAt(0)).toUpperCase()||'?'; }
+
+// ---- TABS y INFORME ----
+var TAB_ACTUAL = 'bandeja';
+var INFORME_PERIODO = 'hoy';
+function mostrarTab(t){
+  TAB_ACTUAL = t;
+  document.getElementById('tabBandeja').classList.toggle('tab-on', t==='bandeja');
+  document.getElementById('tabInforme').classList.toggle('tab-on', t==='informe');
+  document.getElementById('viewBandeja').style.display = t==='bandeja' ? 'block' : 'none';
+  document.getElementById('viewInforme').style.display = t==='informe' ? 'block' : 'none';
+  if(t==='informe') cargarInforme();
+}
+function rangoPeriodo(per){
+  // Devuelve {desde, hasta} en yyyy-mm-dd (zona local del navegador)
+  function fmt(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  if(per==='hoy') return {desde:fmt(hoy), hasta:fmt(hoy)};
+  if(per==='ayer'){var a=new Date(hoy);a.setDate(a.getDate()-1);return {desde:fmt(a), hasta:fmt(a)};}
+  if(per==='semana'){
+    var dia = hoy.getDay() || 7; // domingo=0 -> lo tratamos como 7
+    var lun = new Date(hoy); lun.setDate(hoy.getDate()-(dia-1));
+    return {desde:fmt(lun), hasta:fmt(hoy)};
+  }
+  if(per==='mes'){
+    var primero = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    return {desde:fmt(primero), hasta:fmt(hoy)};
+  }
+  return {desde:'', hasta:''};
+}
+function elegirPeriodo(per){
+  INFORME_PERIODO = per;
+  document.querySelectorAll('.per-btn').forEach(function(b){
+    b.classList.toggle('per-on', b.dataset.per===per);
+  });
+  cargarInforme();
+}
+function cargarInforme(){
+  if(!SESSION) return;
+  var lista = document.getElementById('informeList');
+  lista.innerHTML = '<div class="loading"><span class="spinner"></span>Cargando…</div>';
+  var r = rangoPeriodo(INFORME_PERIODO);
+  jsonp({action:'informe_entrenador', id_entrenador:SESSION.id, desde:r.desde, hasta:r.hasta}, function(resp){
+    if(!resp || !resp.ok){ lista.innerHTML='<div class="empty">No se pudo cargar el informe.</div>'; return; }
+    var st = resp.stats||{total:0,cogio:0,no_cogio:0,buzon:0,ocupado:0};
+    document.getElementById('stTotal').textContent = st.total;
+    document.getElementById('stCogio').textContent = st.cogio;
+    document.getElementById('stNoCogio').textContent = (st.no_cogio+st.buzon+st.ocupado);
+    var partes = resp.partes||[];
+    if(!partes.length){ lista.innerHTML='<div class="empty"><b>Sin llamadas</b>No hay partes en este periodo.</div>'; return; }
+    var resLbl = {cogio:'✓ Cogió', no_cogio:'✗ No cogió', buzon:'📭 Buzón', ocupado:'🔇 Comunicaba'};
+    var html = '';
+    partes.forEach(function(p){
+      var hora = (p.creadoEn||'').substring(11,16) || '';
+      var fecha = (p.creadoEn||'').substring(0,10) || '';
+      html += '<div class="inf-card">'+
+        '<div class="inf-res '+escapeHtml(p.resultado)+'">'+escapeHtml(resLbl[p.resultado]||p.resultado)+'</div>'+
+        '<div class="inf-info">'+
+          '<div class="inf-nombre">'+escapeHtml(p.lead_nombre)+'</div>'+
+          '<div class="inf-meta">'+fecha+' '+hora+(p.lead_tel?' · '+escapeHtml(p.lead_tel):'')+'</div>'+
+          (p.nota_entrenador?'<div class="inf-nota">'+escapeHtml(p.nota_entrenador)+'</div>':'')+
+        '</div>'+
+      '</div>';
+    });
+    lista.innerHTML = html;
+  });
+}
 
 function renderBandeja(){
   var b = document.getElementById('bandeja');
@@ -531,6 +648,4 @@ setInterval(function(){ if(SESSION) cargarLeads(); }, 120000);
 document.addEventListener('visibilitychange', function(){ if(!document.hidden && SESSION) cargarLeads(); });
 </script>
 </body>
-</html>
-                          >
 </html>
