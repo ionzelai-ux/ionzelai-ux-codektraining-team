@@ -115,7 +115,7 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .inf-card .inf-res{font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px;flex-shrink:0}
 .inf-res.cogio{background:#0f1f0f;color:#8bdc8b}
 .inf-res.no_cogio{background:#3a1010;color:#ff9090}
-.inf-res.buzon,.inf-res.ocupado{background:#1a1a1a;color:#bbb}
+.inf-res.buzon,.inf-res.apagado{background:#1a1a1a;color:#bbb}
 .inf-card .inf-info{flex:1;min-width:0}
 .inf-card .inf-nombre{font-size:13px;font-weight:700;color:#fff;margin-bottom:2px}
 .inf-card .inf-meta{font-size:11px;color:#888}
@@ -335,13 +335,13 @@ function cargarInforme(){
   var r = rangoPeriodo(INFORME_PERIODO);
   jsonp({action:'informe_entrenador', id_entrenador:SESSION.id, desde:r.desde, hasta:r.hasta}, function(resp){
     if(!resp || !resp.ok){ lista.innerHTML='<div class="empty">No se pudo cargar el informe.</div>'; return; }
-    var st = resp.stats||{total:0,cogio:0,no_cogio:0,buzon:0,ocupado:0};
+    var st = resp.stats||{total:0,cogio:0,no_cogio:0,buzon:0,apagado:0};
     document.getElementById('stTotal').textContent = st.total;
     document.getElementById('stCogio').textContent = st.cogio;
-    document.getElementById('stNoCogio').textContent = (st.no_cogio+st.buzon+st.ocupado);
+    document.getElementById('stNoCogio').textContent = (st.no_cogio+st.buzon+st.apagado);
     var partes = resp.partes||[];
     if(!partes.length){ lista.innerHTML='<div class="empty"><b>Sin llamadas</b>No hay partes en este periodo.</div>'; return; }
-    var resLbl = {cogio:'✓ Cogió', no_cogio:'✗ No cogió', buzon:'📭 Buzón', ocupado:'🔇 Comunicaba'};
+    var resLbl = {cogio:'✓ Cogió', no_cogio:'✗ No cogió', buzon:'📭 Buzón', apagado:'📴 Apagado'};
     var html = '';
     partes.forEach(function(p){
       var hora = (p.creadoEn||'').substring(11,16) || '';
@@ -471,7 +471,7 @@ function renderParte(){
       '<button type="button" class="res-btn" data-res="cogio" onclick="elegirRes(\'cogio\')">📞 Cogió</button>'+
       '<button type="button" class="res-btn" data-res="no_cogio" onclick="elegirRes(\'no_cogio\')">❌ No cogió</button>'+
       '<button type="button" class="res-btn" data-res="buzon" onclick="elegirRes(\'buzon\')">📭 Buzón de voz</button>'+
-      '<button type="button" class="res-btn" data-res="ocupado" onclick="elegirRes(\'ocupado\')">🔇 Comunicaba</button>'+
+      '<button type="button" class="res-btn" data-res="apagado" onclick="elegirRes(\'apagado\')">📴 Apagado</button>'+
     '</div>'+
 
     '<div id="bloqueDetalle" style="display:none">'+
@@ -531,10 +531,47 @@ function elegirRes(r){
     b.classList.remove('sel','sel-ok');
     if(b.dataset.res===r) b.classList.add(r==='cogio'?'sel-ok':'sel');
   });
+  // Si NO cogió: enviar parte automáticamente sin pedir nada más.
+  // Jon decidirá al aprobar si reasigna a otro entrenador.
+  if(r !== 'cogio'){
+    enviarParteAuto(r);
+    return;
+  }
   document.getElementById('bloqueDetalle').style.display='block';
   document.getElementById('parteEnviar').style.display='block';
-  // Si no cogió, ocultamos cambio de estado (no tiene sentido cambiar el estado sin haber hablado)
-  document.getElementById('bloqueEstado').style.display = (r==='cogio') ? 'block' : 'none';
+  document.getElementById('bloqueEstado').style.display='block';
+}
+function enviarParteAuto(res){
+  var params = {
+    action:'enviar_parte',
+    id_asignacion: PARTE_ACTUAL.id_asignacion,
+    id_entrenador: SESSION.id,
+    resultado: res,
+    nota_entrenador: '',
+    propuesta_estado: '',
+    propuesta_prox_fecha: '',
+    propuesta_prox_hora: '',
+    propuesta_prox_tipo: '',
+    propuesta_prox_nota: '',
+    propuesta_visita_fecha: '',
+    propuesta_visita_hora: '',
+    sugerir_wa: 'false',
+    texto_wa: ''
+  };
+  document.getElementById('modalParteBody').innerHTML =
+    '<div class="ok-msg"><div class="check"><span class="spinner"></span></div><h3>Enviando…</h3></div>';
+  jsonp(params, function(r){
+    if(r && r.ok){
+      var lbl = {no_cogio:'No cogió', buzon:'Buzón', apagado:'Apagado'}[res] || res;
+      document.getElementById('modalParteBody').innerHTML =
+        '<div class="ok-msg"><div class="check">✓</div><h3>'+lbl+' registrado</h3><p>El lead se reagendará automáticamente. Pasa al siguiente.</p></div>'+
+        '<button class="btn-enviar" onclick="cerrarParte();cargarLeads()">Siguiente</button>';
+    } else {
+      document.getElementById('modalParteBody').innerHTML =
+        '<div class="ok-msg"><div class="check" style="color:#ff7a7a">⚠</div><h3>Error</h3><p>'+((r&&r.error)||'No se pudo enviar')+'</p></div>'+
+        '<button class="btn-enviar" onclick="cerrarParte()">Cerrar</button>';
+    }
+  });
 }
 
 var PARTE_PROX_TIPO = '';
@@ -620,11 +657,9 @@ function enviarParte(){
   });
 }
 
-// ---- INIT ----
 (function init(){
   var s = loadSession();
   if(s && s.id){
-    // Validamos contra el backend antes de fiarnos
     SESSION = s;
     jsonp({action:'mis_leads', id_entrenador:s.id}, function(r){
       if(r && r.ok){
@@ -643,9 +678,8 @@ function enviarParte(){
   }
 })();
 
-// Auto-refresh cada 2 min
-setInterval(function(){ if(SESSION) cargarLeads(); }, 120000);
-document.addEventListener('visibilitychange', function(){ if(!document.hidden && SESSION) cargarLeads(); });
+setInterval(function(){ if(SESSION && TAB_ACTUAL==='bandeja') cargarLeads(); }, 120000);
+document.addEventListener('visibilitychange', function(){ if(!document.hidden && SESSION && TAB_ACTUAL==='bandeja') cargarLeads(); });
 </script>
 </body>
 </html>
