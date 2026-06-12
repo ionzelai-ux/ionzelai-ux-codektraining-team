@@ -69,6 +69,25 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .detalle .row b{color:#999;min-width:88px;font-weight:600}
 .detalle .row span{color:#ddd;word-break:break-word}
 .detalle .historial{margin-top:8px;padding-top:8px;border-top:1px solid #1f1f1f;white-space:pre-wrap;color:#aaa;font-size:11.5px;max-height:200px;overflow-y:auto}
+.estado-badge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:8px;letter-spacing:.3px;display:inline-block}
+.card-metrics{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px;padding-top:10px;border-top:1px solid #1f1f1f}
+.card-metrics .metric{flex:1;min-width:90px;background:#0a0a0a;border:1px solid #1f1f1f;border-radius:8px;padding:7px 10px;display:flex;flex-direction:column;gap:1px}
+.card-metrics .metric-lbl{font-size:9.5px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.5px}
+.card-metrics .metric-val{font-size:13px;font-weight:700;color:#fff}
+.card-contacto{margin-top:8px;background:#0a0a0a;border:1px solid #1f1f1f;border-radius:8px;padding:8px 11px;font-size:12.5px}
+.card-contacto .line{display:flex;gap:8px;padding:2px 0;color:#ddd}
+.card-contacto .line b{color:#888;min-width:38px;font-weight:600;font-size:11px}
+.card-contacto .line span{word-break:break-word}
+.bloque-prox,.bloque-visita,.bloque-msg{margin-top:8px;border-radius:8px;padding:8px 11px;font-size:12.5px;line-height:1.5}
+.bloque-prox{background:#0d0f1a;border-left:3px solid #534AB7;color:#cfcaf6}
+.bloque-prox b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#AFA9EC;margin-bottom:2px}
+.bloque-visita{background:#0a1310;border-left:3px solid #1D9E75;color:#9fe1cb}
+.bloque-visita b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#5DCAA5;margin-bottom:2px}
+.bloque-msg{background:#0f100a;border-left:3px solid #BA7517;color:#e8d5a8}
+.bloque-msg b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#FAC775;margin-bottom:2px}
+.historial-lead{margin-top:10px;background:#0a0a0a;border:1px solid #2a2a2a;border-radius:8px;padding:9px 11px;font-size:12px;color:#bbb}
+.historial-lead b{display:block;font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.historial-lead .hist-body{white-space:pre-wrap;line-height:1.5;color:#ddd;max-height:260px;overflow-y:auto;padding-right:4px}
 
 /* ---- MODAL PARTE ---- */
 .modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:18px 14px;overflow-y:auto}
@@ -377,20 +396,95 @@ function renderBandeja(){
   b.innerHTML = h;
 }
 
+function _estadoBadge(estado){
+  var defs = {
+    'E0':{txt:'E0 · Nuevo lead', bg:'#3C3489', col:'#fff'},
+    'E1':{txt:'E1 · Contactado', bg:'#7E1F2D', col:'#fff'},
+    'E2':{txt:'E2 · Interés WAS', bg:'#27500A', col:'#fff'},
+    'E3':{txt:'E3 · No contesta', bg:'#444441', col:'#fff'},
+    'E4':{txt:'E4 · Quiere reservar', bg:'#BA7517', col:'#fff'},
+    'E5':{txt:'E5 · Reserva confirmada', bg:'#854F0B', col:'#fff'},
+    'E5.1':{txt:'E5.1 · Reagendar', bg:'#72243E', col:'#fff'},
+    'E6':{txt:'E6 · Ha visitado', bg:'#085041', col:'#fff'},
+    'E7':{txt:'E7 · Quiere contratar', bg:'#3C3489', col:'#fff'},
+    'E8':{txt:'E8 · Cliente', bg:'#3B6D11', col:'#fff'},
+    'E9':{txt:'E9 · Basura', bg:'#791F1F', col:'#fff'},
+    'ANT':{txt:'Antiguo · revisar', bg:'#2C2C2A', col:'#D3D1C7'}
+  };
+  var d = defs[estado] || {txt:estado, bg:'#444', col:'#fff'};
+  return '<span class="estado-badge" style="background:'+d.bg+';color:'+d.col+'">'+escapeHtml(d.txt)+'</span>';
+}
+
+function _fmtFecha(iso){
+  if(!iso) return '';
+  var s = String(iso).slice(0,10).split('-');
+  if(s.length<3) return iso;
+  return s[2]+'/'+s[1];
+}
+
+function _diasDesde(iso){
+  if(!iso) return null;
+  var d = new Date(iso); if(isNaN(d)) return null;
+  function fmt(x){return x.getFullYear()+'-'+('0'+(x.getMonth()+1)).slice(-2)+'-'+('0'+x.getDate()).slice(-2);}
+  function aTs(s){var p=s.split('-');return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])).getTime();}
+  return Math.round((aTs(fmt(new Date())) - aTs(fmt(d))) / 86400000);
+}
+
 function tarjeta(L){
   var clase = 'card';
   if(L.con_parte && L.parte_estado==='pendiente') clase += ' con-parte';
   if(L.parte_estado==='rechazado') clase += ' rechazado';
 
+  // ---- Tags superiores (estado + procedencia + interés + estado del parte) ----
   var tags = '';
+  if(L.estado) tags += _estadoBadge(L.estado);
   if(L.interes) tags += '<span class="tag interes">'+escapeHtml(L.interes)+'</span>';
   if(L.procedencia) tags += '<span class="tag proc">'+escapeHtml(L.procedencia)+'</span>';
-  if(L.con_parte && L.parte_estado==='pendiente') tags += '<span class="tag parte-ok">Parte enviado · Pendiente revisión</span>';
-  if(L.parte_estado==='rechazado') tags += '<span class="tag parte-rech">⚠ Parte rechazado · corrige y reenvía</span>';
+  if(L.con_parte && L.parte_estado==='pendiente') tags += '<span class="tag parte-ok">Parte enviado · Pendiente</span>';
+  if(L.parte_estado==='rechazado') tags += '<span class="tag parte-rech">⚠ Rechazado · corrige</span>';
 
-  var notaJon = L.nota_jon ? '<div class="nota-jon"><b>📌 Nota de Jon</b>'+escapeHtml(L.nota_jon)+'</div>' : '';
+  // ---- Métricas clave ----
+  var metricas = '<div class="card-metrics">';
+  var llam = (typeof L.llamadas_hechas==='number'?L.llamadas_hechas:0);
+  var llamCol = llam>=2?'#ff8a8a':(llam>=1?'#FAC775':'#888');
+  metricas += '<div class="metric"><span class="metric-lbl">Llamadas hechas</span><span class="metric-val" style="color:'+llamCol+'">'+llam+'</span></div>';
+  if(L.fecha_gestion){
+    var dd = _diasDesde(L.fecha_gestion);
+    var txt = dd===0?'hoy':(dd===1?'ayer':'hace '+dd+' días');
+    metricas += '<div class="metric"><span class="metric-lbl">Entró</span><span class="metric-val">'+_fmtFecha(L.fecha_gestion)+' · '+txt+'</span></div>';
+  }
+  if(L.ultimo_contacto){
+    metricas += '<div class="metric"><span class="metric-lbl">Último contacto</span><span class="metric-val">'+_fmtFecha(L.ultimo_contacto)+'</span></div>';
+  }
+  metricas += '</div>';
+
+  // ---- Datos de contacto ----
+  var contacto = '<div class="card-contacto">';
+  if(L.tel) contacto += '<div class="line"><b>Tel.</b> <span>'+escapeHtml(L.tel)+'</span></div>';
+  if(L.mail) contacto += '<div class="line"><b>Mail</b> <span>'+escapeHtml(L.mail)+'</span></div>';
+  contacto += '</div>';
+
+  // ---- Próximo contacto agendado (si lo hay) ----
+  var proximo = '';
+  if(L.prox_fecha){
+    var tipo = L.prox_tipo==='mensaje'?'💬 Mensaje':'📞 Llamada';
+    var hora = L.prox_hora ? (' · '+L.prox_hora) : (L.prox_franja==='tarde'?' · Tarde':' · Mañana');
+    proximo = '<div class="bloque-prox"><b>📅 Próximo contacto agendado</b>'+tipo+' · '+_fmtFecha(L.prox_fecha)+hora+(L.prox_nota?' — '+escapeHtml(L.prox_nota):'')+'</div>';
+  }
+  if(L.fecha_visita){
+    var hv = L.hora_visita ? (' a las '+L.hora_visita+'h') : '';
+    proximo += '<div class="bloque-visita"><b>🏠 Visita reservada</b>'+_fmtFecha(L.fecha_visita)+hv+'</div>';
+  }
+  if(L.mensaje_enviado_en){
+    proximo += '<div class="bloque-msg"><b>📤 Mensaje enviado el</b>'+_fmtFecha(L.mensaje_enviado_en)+'</div>';
+  }
+
+  // ---- Notas ----
+  var notaJon = L.nota_jon ? '<div class="nota-jon"><b>📌 Nota de Jon (asignación)</b>'+escapeHtml(L.nota_jon)+'</div>' : '';
   var notaRech = (L.parte_estado==='rechazado' && L.parte_rechazo) ? '<div class="nota-rech"><b>Motivo del rechazo</b>'+escapeHtml(L.parte_rechazo)+'</div>' : '';
+  var historial = L.nota_lead ? '<div class="historial-lead"><b>📜 Historial del lead</b><div class="hist-body">'+escapeHtml(L.nota_lead)+'</div></div>' : '';
 
+  // ---- Acciones ----
   var telLink = L.tel ? '<a class="btn-call" href="tel:'+encodeURIComponent(L.tel)+'">📞 Llamar</a>' : '<button class="btn-call" disabled style="opacity:.4">Sin tel.</button>';
   var btnParte;
   if(L.con_parte && L.parte_estado==='pendiente'){
@@ -409,10 +503,8 @@ function tarjeta(L){
         '<div class="card-tags">'+tags+'</div>'+
       '</div>'+
     '</div>'+
-    notaJon + notaRech +
+    metricas + contacto + proximo + notaJon + notaRech + historial +
     '<div class="card-actions">'+telLink+btnParte+'</div>'+
-    '<button class="btn-detalle" onclick="toggleDetalle(\''+L.id_asignacion+'\')">Ver historial del lead</button>'+
-    '<div class="detalle" id="det_'+L.id_asignacion+'"><div class="loading"><span class="spinner"></span>Cargando…</div></div>'+
   '</div>';
 }
 
