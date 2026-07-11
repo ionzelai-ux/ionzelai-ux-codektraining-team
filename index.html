@@ -88,6 +88,11 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .historial-lead{margin-top:10px;background:#0a0a0a;border:1px solid #2a2a2a;border-radius:8px;padding:9px 11px;font-size:12px;color:#bbb}
 .historial-lead b{display:block;font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
 .historial-lead .hist-body{white-space:pre-wrap;line-height:1.5;color:#ddd;max-height:260px;overflow-y:auto;padding-right:4px}
+.card{position:relative}
+.btn-descartar{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;border:1px solid #2a2a2a;background:#1a1a1a;color:#888;font-size:13px;line-height:1;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit;transition:background .12s,color .12s,border-color .12s;z-index:2}
+.btn-descartar:hover{background:#5a1010;color:#fff;border-color:#B23A3A}
+.btn-reset{background:#2a1a1a;border-color:#5a1010;color:#ffb0b0}
+.btn-reset:hover{background:#5a1010;border-color:#B23A3A;color:#fff}
 
 /* ---- MODAL PARTE ---- */
 .modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:18px 14px;overflow-y:auto}
@@ -183,7 +188,10 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
   <div id="viewBandeja">
     <div class="bandeja-head">
       <h2>Tus leads de hoy</h2>
-      <button class="btn-refresh" onclick="cargarLeads()">↻ Actualizar</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-refresh" onclick="cargarLeads()">↻ Actualizar</button>
+        <button class="btn-refresh btn-reset" onclick="resetTodos()" title="Descartar todos los leads pendientes">🗑 Vaciar todo</button>
+      </div>
     </div>
     <div id="bandeja"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
   </div>
@@ -311,6 +319,30 @@ function cargarLeads(){
 }
 
 function iniciales(s){ if(!s) return '?'; var p=s.trim().split(/\\s+/); return ((p[0]||'').charAt(0)+(p[1]||'').charAt(0)).toUpperCase()||'?'; }
+
+function descartarLead(idAsig, nombre){
+  if(!SESSION) return;
+  if(!confirm('¿Descartar a "'+nombre+'" de tu bandeja?\n\nEl lead NO se borra del CRM, solo desaparece de tu lista. Jon lo puede reasignar más tarde si quiere.')) return;
+  jsonp({action:'descartar_asignacion', id_asignacion:idAsig, id_entrenador:SESSION.id, pin:SESSION.pin}, function(r){
+    if(r && r.ok){ cargarLeads(); }
+    else { alert('No se pudo descartar: '+((r&&r.error)||'error desconocido')); }
+  });
+}
+
+function resetTodos(){
+  if(!SESSION) return;
+  var pendientes = LEADS.filter(function(l){return !l.con_parte || l.parte_estado==='rechazado';}).length;
+  if(!pendientes){ alert('No tienes leads pendientes que vaciar.'); return; }
+  if(!confirm('¿Vaciar TODA tu bandeja?\n\nSe descartarán '+pendientes+' leads pendientes (los que ya tienen parte enviado no se tocan).\n\nLos leads NO se borran del CRM, solo desaparecen de tu lista. Esta acción no se puede deshacer desde la app.')) return;
+  jsonp({action:'descartar_todas', id_entrenador:SESSION.id, pin:SESSION.pin}, function(r){
+    if(r && r.ok){
+      alert('Se han descartado '+r.descartadas+' leads. Tu bandeja está lista para los nuevos.');
+      cargarLeads();
+    } else {
+      alert('No se pudo vaciar: '+((r&&r.error)||'error desconocido'));
+    }
+  });
+}
 
 // ---- TABS y INFORME ----
 var TAB_ACTUAL = 'bandeja';
@@ -495,7 +527,10 @@ function tarjeta(L){
     btnParte = '<button class="btn-parte" onclick="abrirParte(\''+L.id_asignacion+'\')">📝 Hacer parte</button>';
   }
 
+  var btnDescartar = '<button class="btn-descartar" title="Descartar este lead (quitarlo de tu bandeja)" onclick="descartarLead(\''+L.id_asignacion+'\',\''+escapeHtml((L.nombre||L.tel||'este lead').replace(/\'/g,''))+'\')">✕</button>';
+
   return '<div class="'+clase+'">'+
+    btnDescartar +
     '<div class="card-top">'+
       '<div class="av">'+iniciales(L.nombre||L.tel)+'</div>'+
       '<div class="card-info">'+
