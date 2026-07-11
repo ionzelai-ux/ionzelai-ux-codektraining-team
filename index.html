@@ -91,6 +91,17 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .card{position:relative}
 .btn-descartar{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;border:1px solid #2a2a2a;background:#1a1a1a;color:#888;font-size:13px;line-height:1;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit;transition:background .12s,color .12s,border-color .12s;z-index:2}
 .btn-descartar:hover{background:#5a1010;color:#fff;border-color:#B23A3A}
+.grupo-tit{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:22px 0 8px;padding:8px 12px;border-radius:8px;display:inline-block}
+.grupo-atr{background:#3a1010;color:#ff9090;border:1px solid #B23A3A}
+.grupo-hoy{background:#1a1a08;color:#FAC775;border:1px solid #BA7517}
+.grupo-man{background:#0d0f1a;color:#AFA9EC;border:1px solid #534AB7}
+.grupo-prox{background:#0a1310;color:#5DCAA5;border:1px solid #1D9E75}
+.grupo-ok{background:#0f1f0f;color:#8bdc8b;border:1px solid #1B7A3D}
+.grupo-badge{display:inline-block;font-size:10px;font-weight:700;background:#2a2a2a;color:#ccc;padding:2px 8px;border-radius:8px;margin-left:6px;vertical-align:middle;position:relative;top:-16px}
+.fecha-llamada-chip{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:8px;background:#0f0f0f;color:#ccc;border:1px solid #333;margin-top:4px}
+.fecha-llamada-chip.atr{background:#3a1010;color:#ff9090;border-color:#B23A3A}
+.fecha-llamada-chip.hoy{background:#1a1a08;color:#FAC775;border-color:#BA7517}
+.fecha-llamada-chip.man{background:#0d0f1a;color:#AFA9EC;border-color:#534AB7}
 .btn-reset{background:#2a1a1a;border-color:#5a1010;color:#ffb0b0}
 .btn-reset:hover{background:#5a1010;border-color:#B23A3A;color:#fff}
 
@@ -450,6 +461,24 @@ function cargarInforme(){
   });
 }
 
+function _hoyISOTeam(){
+  var d=new Date();
+  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+}
+function _sumarDiasISO(iso,n){
+  var p=iso.split('-'); var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+  d.setDate(d.getDate()+n);
+  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+}
+function _grupoTitulo(clave, hoyISO){
+  if(clave==='atrasado') return '<div class="grupo-tit grupo-atr">⚠ Atrasados · toca llamar YA</div>';
+  if(clave==='hoy')      return '<div class="grupo-tit grupo-hoy">⭐ Hoy</div>';
+  if(clave==='manana')   return '<div class="grupo-tit grupo-man">📆 Mañana</div>';
+  if(clave==='prox')     return '<div class="grupo-tit grupo-prox">🗓 Próximos días</div>';
+  if(clave==='sin')      return '<div class="grupo-tit">Sin fecha asignada</div>';
+  return '';
+}
+
 function renderBandeja(){
   var b = document.getElementById('bandeja');
   if(!LEADS.length){
@@ -459,10 +488,38 @@ function renderBandeja(){
   var pendientes = LEADS.filter(function(l){return !l.con_parte || l.parte_estado==='rechazado';});
   var hechos = LEADS.filter(function(l){return l.con_parte && l.parte_estado!=='rechazado';});
 
+  var hoy = _hoyISOTeam();
+  var manana = _sumarDiasISO(hoy, 1);
+
+  function claveGrupo(L){
+    var f = (L.fecha_llamada||'').slice(0,10);
+    if(!f) return 'sin';
+    if(f < hoy) return 'atrasado';
+    if(f === hoy) return 'hoy';
+    if(f === manana) return 'manana';
+    return 'prox';
+  }
+
+  var grupos = { atrasado:[], hoy:[], manana:[], prox:[], sin:[] };
+  pendientes.forEach(function(L){ grupos[claveGrupo(L)].push(L); });
+
+  // Ordenar cada grupo por fecha
+  ['atrasado','hoy','manana','prox'].forEach(function(k){
+    grupos[k].sort(function(a,b){
+      var fa=(a.fecha_llamada||'').slice(0,10), fb=(b.fecha_llamada||'').slice(0,10);
+      return fa<fb?-1:(fa>fb?1:0);
+    });
+  });
+
   var h = '';
-  pendientes.forEach(function(L){ h += tarjeta(L); });
+  ['atrasado','hoy','manana','prox','sin'].forEach(function(k){
+    if(!grupos[k].length) return;
+    h += _grupoTitulo(k, hoy) + '<div class="grupo-badge">' + grupos[k].length + '</div>';
+    grupos[k].forEach(function(L){ h += tarjeta(L); });
+  });
+
   if(hechos.length){
-    h += '<div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin:20px 0 8px;padding-left:4px">Ya con parte enviado</div>';
+    h += '<div class="grupo-tit grupo-ok">✓ Ya con parte enviado</div>';
     hechos.forEach(function(L){ h += tarjeta(L); });
   }
   b.innerHTML = h;
@@ -514,6 +571,19 @@ function tarjeta(L){
   if(L.procedencia) tags += '<span class="tag proc">'+escapeHtml(L.procedencia)+'</span>';
   if(L.con_parte && L.parte_estado==='pendiente') tags += '<span class="tag parte-ok">Parte enviado · Pendiente</span>';
   if(L.parte_estado==='rechazado') tags += '<span class="tag parte-rech">⚠ Rechazado · corrige</span>';
+
+  // Chip de fecha de llamada destacado
+  if(L.fecha_llamada){
+    var fll = (L.fecha_llamada||'').slice(0,10);
+    var hoyT = _hoyISOTeam();
+    var manT = _sumarDiasISO(hoyT, 1);
+    var chipCls = fll<hoyT?'atr':(fll===hoyT?'hoy':(fll===manT?'man':''));
+    var chipTxt = fll<hoyT?'📞 ATRASADO desde '+_fmtFecha(fll)
+                   :(fll===hoyT?'📞 Llamar HOY'
+                   :(fll===manT?'📞 Llamar mañana ('+_fmtFecha(fll)+')'
+                   :'📞 Llamar el '+_fmtFecha(fll)));
+    tags += '<span class="fecha-llamada-chip '+chipCls+'">'+chipTxt+'</span>';
+  }
 
   // ---- Métricas clave ----
   var metricas = '<div class="card-metrics">';
@@ -781,24 +851,18 @@ function enviarParte(){
   var btn = document.getElementById('parteEnviar');
   btn.disabled=true;btn.textContent='Enviando…';
 
-  var proxTipo = PARTE_PROX_TIPO || '';
   var proxFecha = document.getElementById('pProxFecha').value;
-  var proxHora = proxTipo==='llamada' ? document.getElementById('pProxHora').value : '';
+  var proxHora = document.getElementById('pProxHora').value;
+  var proxTipo = proxFecha ? 'llamada' : '';
   var proxNota = document.getElementById('pProxNota').value.trim();
-  // Validación: si el entrenador eligió tipo, debe haber fecha
-  if(proxTipo && !proxFecha){
-    err.textContent='Has elegido tipo de contacto, pero falta poner la fecha.';
-    btn.disabled=false;btn.textContent='Enviar parte a Jon';
-    return;
-  }
-  // Si es mensaje, el texto se envía también como sugerencia de WA para que Jon lo vea fácil al aprobar
-  var sugWa = (proxTipo==='mensaje' && proxNota) ? 'true' : 'false';
-  var textoWa = (proxTipo==='mensaje') ? proxNota : '';
+  var sugWa = document.getElementById('pSugWa').checked ? 'true' : 'false';
+  var textoWa = document.getElementById('pTextoWa').value.trim();
 
   var params = {
-    action:'enviar_parte',
+    action: 'enviar_parte',
     id_asignacion: PARTE_ACTUAL.id_asignacion,
     id_entrenador: SESSION.id,
+    pin: SESSION.pin || '',
     resultado: PARTE_ACTUAL.resultado,
     nota_entrenador: document.getElementById('pNota').value.trim(),
     propuesta_estado: document.getElementById('pEstado').value,
@@ -826,7 +890,6 @@ function enviarParte(){
 
 (function init(){
   var s = loadSession();
-  // Soporte de deep-link: ?entrenador=t1 selecciona directamente sin preguntar
   var m = location.search.match(/[?&]entrenador=([^&]+)/);
   if(m){
     var idQ = decodeURIComponent(m[1]);
@@ -834,7 +897,7 @@ function enviarParte(){
       var ents = (r && r.ok && r.entrenadores) ? r.entrenadores : [];
       var e = ents.filter(function(x){return x.id===idQ;})[0];
       if(e){ entrarComo(e); return; }
-      if(s && s.id){ SESSION = s; mostrarBandeja(); cargarLeads(); }
+      if(s && s.id){ SESSION = s; mostrarBandeja(); var c=_cacheLeer(); if(c && c.leads && c.leads.length){LEADS=c.leads;renderBandeja();} else cargarLeads(); }
       else { document.getElementById('vLogin').style.display='block'; cargarBotonesLogin(); }
     });
     return;
@@ -842,7 +905,23 @@ function enviarParte(){
   if(s && s.id){
     SESSION = s;
     mostrarBandeja();
-    // Pinta caché al instante. Solo llama al backend si no había nada guardado.
+    var cache = _cacheLeer();
+    if(cache && cache.leads && cache.leads.length){
+      LEADS = cache.leads;
+      renderBandeja();
+    } else {
+      cargarLeads();
+    }
+  } else {
+    document.getElementById('vLogin').style.display='block';
+    cargarBotonesLogin();
+  }
+})();
+// Auto-refresh DESACTIVADO. Solo actualiza al pulsar el botón Actualizar.
+</script>
+</body>
+</html>
+i no había nada guardado.
     var cache = _cacheLeer();
     if(cache && cache.leads && cache.leads.length){
       LEADS = cache.leads;
