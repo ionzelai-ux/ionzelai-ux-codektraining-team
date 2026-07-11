@@ -282,7 +282,15 @@ function entrarComo(ent){
   SESSION = {id:ent.id, nombre:ent.nombre};
   saveSession(SESSION);
   mostrarBandeja();
-  cargarLeads();
+  // Pinta caché si hay, y refresca en background
+  var cache = _cacheLeer();
+  if(cache && cache.leads && cache.leads.length){
+    LEADS = cache.leads;
+    renderBandeja();
+    cargarLeads(true);
+  } else {
+    cargarLeads();
+  }
 }
 
 function hacerLogout(){
@@ -303,17 +311,43 @@ function mostrarBandeja(){
 }
 
 // ---- CARGAR LEADS ASIGNADOS ----
-function cargarLeads(){
+var LAST_FETCH_TS = 0;
+var _LEADS_CACHE_KEY = 'codek_team_leads_cache';
+function _cacheGuardar(){
+  if(!SESSION) return;
+  try{
+    localStorage.setItem(_LEADS_CACHE_KEY+'_'+SESSION.id, JSON.stringify({ts:Date.now(), leads:LEADS}));
+  }catch(e){}
+}
+function _cacheLeer(){
+  if(!SESSION) return null;
+  try{
+    var v = localStorage.getItem(_LEADS_CACHE_KEY+'_'+SESSION.id);
+    return v ? JSON.parse(v) : null;
+  }catch(e){ return null; }
+}
+
+// silencioso=true => refresca en background sin cambiar la UI mientras espera
+function cargarLeads(silencioso){
   if(!SESSION) return;
   var b = document.getElementById('bandeja');
-  b.innerHTML = '<div class="loading"><span class="spinner"></span>Cargando…</div>';
+  // Si no tenemos NADA para pintar todavía, muestra el spinner. Si ya hay algo,
+  // no lo tocamos y refrescamos por debajo.
+  if(!silencioso && !LEADS.length){
+    b.innerHTML = '<div class="loading"><span class="spinner"></span>Cargando…</div>';
+  }
   jsonp({action:'mis_leads', id_entrenador:SESSION.id, pin:SESSION.pin||''}, function(r){
+    LAST_FETCH_TS = Date.now();
     if(!r || !r.ok){
       if(r && r.error==='pin'){ hacerLogout(); return; }
-      b.innerHTML = '<div class="empty"><b>No se ha podido cargar.</b>Reintenta en un momento o pulsa Salir y vuelve a entrar.</div>';
+      // Solo mostramos error si no había nada previo. Si había cache, dejamos lo cacheado.
+      if(!LEADS.length){
+        b.innerHTML = '<div class="empty"><b>No se ha podido cargar.</b>Reintenta en un momento o pulsa Salir y vuelve a entrar.</div>';
+      }
       return;
     }
     LEADS = r.leads || [];
+    _cacheGuardar();
     renderBandeja();
   });
 }
@@ -692,7 +726,7 @@ function enviarParteAuto(res){
       var lbl = {no_cogio:'No cogió', buzon:'Buzón', apagado:'Apagado'}[res] || res;
       document.getElementById('modalParteBody').innerHTML =
         '<div class="ok-msg"><div class="check">✓</div><h3>'+lbl+' registrado</h3><p>El lead se reagendará automáticamente. Pasa al siguiente.</p></div>'+
-        '<button class="btn-enviar" onclick="cerrarParte();cargarLeads()">Siguiente</button>';
+        '<button class="btn-enviar" onclick="cerrarParte();cargarLeads(true)">Siguiente</button>';
     } else {
       document.getElementById('modalParteBody').innerHTML =
         '<div class="ok-msg"><div class="check" style="color:#ff7a7a">⚠</div><h3>Error</h3><p>'+((r&&r.error)||'No se pudo enviar')+'</p></div>'+
@@ -777,7 +811,7 @@ function enviarParte(){
     if(r && r.ok){
       document.getElementById('modalParteBody').innerHTML =
         '<div class="ok-msg"><div class="check">✓</div><h3>Parte enviado</h3><p>Jon lo revisará y actualizará la ficha del lead. Gracias.</p></div>'+
-        '<button class="btn-enviar" onclick="cerrarParte();cargarLeads()">Cerrar</button>';
+        '<button class="btn-enviar" onclick="cerrarParte();cargarLeads(true)">Cerrar</button>';
     } else {
       err.textContent = (r && r.error) ? ('Error: '+r.error) : 'No se ha podido enviar. Inténtalo de nuevo.';
     }
@@ -794,7 +828,6 @@ function enviarParte(){
       var ents = (r && r.ok && r.entrenadores) ? r.entrenadores : [];
       var e = ents.filter(function(x){return x.id===idQ;})[0];
       if(e){ entrarComo(e); return; }
-      // Si el id no existe, fallback a login normal
       if(s && s.id){ SESSION = s; mostrarBandeja(); cargarLeads(); }
       else { document.getElementById('vLogin').style.display='block'; cargarBotonesLogin(); }
     });
@@ -802,25 +835,36 @@ function enviarParte(){
   }
   if(s && s.id){
     SESSION = s;
-    jsonp({action:'mis_leads', id_entrenador:s.id, pin:s.pin||''}, function(r){
-      if(r && r.ok){
-        mostrarBandeja();
-        LEADS = r.leads || [];
-        renderBandeja();
-      } else {
-        clearSession();
-        document.getElementById('vLogin').style.display='block';
-        cargarBotonesLogin();
-      }
-    });
+    mostrarBandeja();
+    var cache = _cacheLeer();
+    if(cache && cache.leads && cache.leads.length){
+      LEADS = cache.leads;
+      renderBandeja();
+      cargarLeads(true);
+    } else {
+      cargarLeads();
+    }
   } else {
     document.getElementById('vLogin').style.display='block';
     cargarBotonesLogin();
   }
 })();
 
-setInterval(function(){ if(SESSION && TAB_ACTUAL==='bandeja') cargarLeads(); }, 120000);
-document.addEventListener('visibilitychange', function(){ if(!document.hidden && SESSION && TAB_ACTUAL==='bandeja') cargarLeads(); });
+setInterval(function(){ if(SESSION && TAB_ACTUAL==='bandeja') cargarLeads(true); }, 120000);
+document.addEventListener('visibilitychange', function(){
+  if(!document.hidden && SESSION && TAB_ACTUAL==='bandeja'){
+    if(Date.now() - LAST_FETCH_TS > 30000) cargarLeads(true);
+  }
+});
+</script>
+</body>
+</html>
+o refrescar si han pasado más de 30 segundos
+document.addEventListener('visibilitychange', function(){
+  if(!document.hidden && SESSION && TAB_ACTUAL==='bandeja'){
+    if(Date.now() - LAST_FETCH_TS > 30000) cargarLeads(true);
+  }
+});
 </script>
 </body>
 </html>
