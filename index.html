@@ -282,12 +282,11 @@ function entrarComo(ent){
   SESSION = {id:ent.id, nombre:ent.nombre};
   saveSession(SESSION);
   mostrarBandeja();
-  // Pinta caché si hay, y refresca en background
+  // Pinta caché al instante. Solo llama al backend si no había nada guardado.
   var cache = _cacheLeer();
   if(cache && cache.leads && cache.leads.length){
     LEADS = cache.leads;
     renderBandeja();
-    cargarLeads(true);
   } else {
     cargarLeads();
   }
@@ -357,9 +356,13 @@ function iniciales(s){ if(!s) return '?'; var p=s.trim().split(/\\s+/); return (
 function descartarLead(idAsig, nombre){
   if(!SESSION) return;
   if(!confirm('¿Descartar a "'+nombre+'" de tu bandeja?\n\nEl lead NO se borra del CRM, solo desaparece de tu lista. Jon lo puede reasignar más tarde si quiere.')) return;
+  // Actualización local inmediata (no bloquea al usuario)
+  LEADS = LEADS.filter(function(x){return x.id_asignacion !== idAsig;});
+  _cacheGuardar();
+  renderBandeja();
+  // Aviso al backend en segundo plano
   jsonp({action:'descartar_asignacion', id_asignacion:idAsig, id_entrenador:SESSION.id}, function(r){
-    if(r && r.ok){ cargarLeads(); }
-    else { alert('No se pudo descartar: '+((r&&r.error)||'error desconocido')); }
+    if(!(r && r.ok)) alert('Aviso: no se pudo confirmar en el servidor: '+((r&&r.error)||'error desconocido'));
   });
 }
 
@@ -368,12 +371,15 @@ function resetTodos(){
   var pendientes = LEADS.filter(function(l){return !l.con_parte || l.parte_estado==='rechazado';}).length;
   if(!pendientes){ alert('No tienes leads pendientes que vaciar.'); return; }
   if(!confirm('¿Vaciar TODA tu bandeja?\n\nSe descartarán '+pendientes+' leads pendientes (los que ya tienen parte enviado no se tocan).\n\nLos leads NO se borran del CRM, solo desaparecen de tu lista. Esta acción no se puede deshacer desde la app.')) return;
+  // Actualización local inmediata: quitamos todos los pendientes
+  LEADS = LEADS.filter(function(l){return l.con_parte && l.parte_estado!=='rechazado';});
+  _cacheGuardar();
+  renderBandeja();
   jsonp({action:'descartar_todas', id_entrenador:SESSION.id}, function(r){
     if(r && r.ok){
-      alert('Se han descartado '+r.descartadas+' leads. Tu bandeja está lista para los nuevos.');
-      cargarLeads();
+      // Nada más que hacer, la lista ya se actualizó localmente
     } else {
-      alert('No se pudo vaciar: '+((r&&r.error)||'error desconocido'));
+      alert('Aviso: no se pudo confirmar en el servidor: '+((r&&r.error)||'error desconocido'));
     }
   });
 }
@@ -836,11 +842,11 @@ function enviarParte(){
   if(s && s.id){
     SESSION = s;
     mostrarBandeja();
+    // Pinta caché al instante. Solo llama al backend si no había nada guardado.
     var cache = _cacheLeer();
     if(cache && cache.leads && cache.leads.length){
       LEADS = cache.leads;
       renderBandeja();
-      cargarLeads(true);
     } else {
       cargarLeads();
     }
@@ -850,12 +856,8 @@ function enviarParte(){
   }
 })();
 
-setInterval(function(){ if(SESSION && TAB_ACTUAL==='bandeja') cargarLeads(true); }, 120000);
-document.addEventListener('visibilitychange', function(){
-  if(!document.hidden && SESSION && TAB_ACTUAL==='bandeja'){
-    if(Date.now() - LAST_FETCH_TS > 30000) cargarLeads(true);
-  }
-});
+// Auto-refresh DESACTIVADO. La app solo se actualiza cuando el usuario pulsa
+// el botón "Actualizar" arriba a la derecha, para evitar espera constante.
 </script>
 </body>
 </html>
