@@ -307,7 +307,7 @@ function cargarLeads(){
   if(!SESSION) return;
   var b = document.getElementById('bandeja');
   b.innerHTML = '<div class="loading"><span class="spinner"></span>Cargando…</div>';
-  jsonp({action:'mis_leads', id_entrenador:SESSION.id}, function(r){
+  jsonp({action:'mis_leads', id_entrenador:SESSION.id, pin:SESSION.pin||''}, function(r){
     if(!r || !r.ok){
       if(r && r.error==='pin'){ hacerLogout(); return; }
       b.innerHTML = '<div class="empty"><b>No se ha podido cargar.</b>Reintenta en un momento o pulsa Salir y vuelve a entrar.</div>';
@@ -323,7 +323,7 @@ function iniciales(s){ if(!s) return '?'; var p=s.trim().split(/\\s+/); return (
 function descartarLead(idAsig, nombre){
   if(!SESSION) return;
   if(!confirm('¿Descartar a "'+nombre+'" de tu bandeja?\n\nEl lead NO se borra del CRM, solo desaparece de tu lista. Jon lo puede reasignar más tarde si quiere.')) return;
-  jsonp({action:'descartar_asignacion', id_asignacion:idAsig, id_entrenador:SESSION.id, pin:SESSION.pin}, function(r){
+  jsonp({action:'descartar_asignacion', id_asignacion:idAsig, id_entrenador:SESSION.id}, function(r){
     if(r && r.ok){ cargarLeads(); }
     else { alert('No se pudo descartar: '+((r&&r.error)||'error desconocido')); }
   });
@@ -334,7 +334,7 @@ function resetTodos(){
   var pendientes = LEADS.filter(function(l){return !l.con_parte || l.parte_estado==='rechazado';}).length;
   if(!pendientes){ alert('No tienes leads pendientes que vaciar.'); return; }
   if(!confirm('¿Vaciar TODA tu bandeja?\n\nSe descartarán '+pendientes+' leads pendientes (los que ya tienen parte enviado no se tocan).\n\nLos leads NO se borran del CRM, solo desaparecen de tu lista. Esta acción no se puede deshacer desde la app.')) return;
-  jsonp({action:'descartar_todas', id_entrenador:SESSION.id, pin:SESSION.pin}, function(r){
+  jsonp({action:'descartar_todas', id_entrenador:SESSION.id}, function(r){
     if(r && r.ok){
       alert('Se han descartado '+r.descartadas+' leads. Tu bandeja está lista para los nuevos.');
       cargarLeads();
@@ -786,9 +786,23 @@ function enviarParte(){
 
 (function init(){
   var s = loadSession();
+  // Soporte de deep-link: ?entrenador=t1 selecciona directamente sin preguntar
+  var m = location.search.match(/[?&]entrenador=([^&]+)/);
+  if(m){
+    var idQ = decodeURIComponent(m[1]);
+    jsonp({action:'entrenadores'}, function(r){
+      var ents = (r && r.ok && r.entrenadores) ? r.entrenadores : [];
+      var e = ents.filter(function(x){return x.id===idQ;})[0];
+      if(e){ entrarComo(e); return; }
+      // Si el id no existe, fallback a login normal
+      if(s && s.id){ SESSION = s; mostrarBandeja(); cargarLeads(); }
+      else { document.getElementById('vLogin').style.display='block'; cargarBotonesLogin(); }
+    });
+    return;
+  }
   if(s && s.id){
     SESSION = s;
-    jsonp({action:'mis_leads', id_entrenador:s.id}, function(r){
+    jsonp({action:'mis_leads', id_entrenador:s.id, pin:s.pin||''}, function(r){
       if(r && r.ok){
         mostrarBandeja();
         LEADS = r.leads || [];
