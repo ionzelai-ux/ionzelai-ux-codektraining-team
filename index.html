@@ -102,6 +102,53 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .fecha-llamada-chip.atr{background:#3a1010;color:#ff9090;border-color:#B23A3A}
 .fecha-llamada-chip.hoy{background:#1a1a08;color:#FAC775;border-color:#BA7517}
 .fecha-llamada-chip.man{background:#0d0f1a;color:#AFA9EC;border-color:#534AB7}
+/* Toolbar: buscador + calendario */
+.toolbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.buscador{flex:1;min-width:180px;position:relative}
+.buscador .lupa{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#666;font-size:13px;pointer-events:none}
+.buscador input{width:100%;background:#141414;border:1.5px solid #2a2a2a;border-radius:10px;padding:10px 34px 10px 32px;color:#fff;font-size:13.5px;font-family:inherit}
+.buscador input:focus{outline:none;border-color:#B23A3A;background:#1a1010}
+.clear-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:22px;height:22px;border:none;background:#2a2a2a;color:#ccc;border-radius:50%;cursor:pointer;font-size:11px;font-family:inherit;font-weight:700}
+.clear-x:hover{background:#B23A3A;color:#fff}
+.btn-cal{background:#141414;border:1.5px solid #2a2a2a;color:#ccc;font-size:13px;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap}
+.btn-cal:hover{border-color:#BA7517;color:#FAC775}
+.btn-cal.on{background:#1a1a08;border-color:#BA7517;color:#FAC775}
+/* Cabeceras de día con formato limpio */
+.dia-head{margin:20px 0 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:0 4px}
+.dia-head .weekday{font-size:11px;font-weight:800;letter-spacing:1.5px;color:#888;text-transform:uppercase}
+.dia-head .fecha-num{font-size:22px;font-weight:900;color:#fff;line-height:1}
+.dia-head .fecha-mes{font-size:12px;font-weight:700;color:#999;text-transform:uppercase}
+.dia-head .num-leads{margin-left:auto;font-size:11px;font-weight:700;background:#2a2a2a;color:#ccc;padding:3px 9px;border-radius:10px}
+.dia-head.hoy{background:linear-gradient(90deg,#3a1010,transparent);border-left:4px solid #B23A3A;padding-left:12px;border-radius:0 8px 8px 0}
+.dia-head.hoy .weekday{color:#ff9090}
+.dia-head.hoy .fecha-num,.dia-head.hoy .fecha-mes{color:#fff}
+.dia-head.hoy .badge-hoy{background:#B23A3A;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;letter-spacing:1px}
+.dia-head.atr{background:linear-gradient(90deg,#2a1010,transparent);border-left:4px solid #5a2020;padding-left:12px;border-radius:0 8px 8px 0}
+.dia-head.atr .weekday{color:#ff8080}
+.dia-head.man{border-left:4px solid #534AB7;padding-left:12px;border-radius:0 8px 8px 0}
+.dia-head.man .weekday{color:#AFA9EC}
+.dia-head.futuro{border-left:4px solid #1D9E75;padding-left:12px;border-radius:0 8px 8px 0}
+.dia-head.futuro .weekday{color:#5DCAA5}
+.dia-head.sin{border-left:4px solid #444;padding-left:12px;border-radius:0 8px 8px 0}
+.dia-head.parte{border-left:4px solid #27500A;padding-left:12px;border-radius:0 8px 8px 0;opacity:.7}
+/* Filtro activo (banner arriba cuando hay un día filtrado) */
+.filtro-activo{background:#1a1a08;border:1px solid #BA7517;color:#FAC775;padding:10px 14px;border-radius:10px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
+.filtro-activo b{color:#fff;font-weight:800}
+.filtro-activo button{background:none;border:1px solid #BA7517;color:#FAC775;padding:5px 10px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:700}
+.filtro-activo button:hover{background:#BA7517;color:#fff}
+/* Mini calendario del modal filtro */
+.mini-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:6px}
+.mini-cal .mc-dow{font-size:10px;font-weight:700;color:#666;text-align:center;padding:6px 0;text-transform:uppercase;letter-spacing:.5px}
+.mini-cal .mc-day{aspect-ratio:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:#ccc;font-family:inherit;padding:0;gap:1px;position:relative}
+.mini-cal .mc-day:hover{background:#2a1010;border-color:#B23A3A}
+.mini-cal .mc-day.otro-mes{opacity:.25}
+.mini-cal .mc-day.hoy{background:#3a1010;border-color:#B23A3A;color:#fff;font-weight:800}
+.mini-cal .mc-day.con-leads::after{content:'';width:5px;height:5px;background:#FAC775;border-radius:50%;position:absolute;bottom:5px}
+.mini-cal .mc-day.sel{background:#BA7517;border-color:#BA7517;color:#fff;font-weight:800}
+.mini-cal-nav{display:flex;align-items:center;justify-content:space-between;margin:8px 0 4px}
+.mini-cal-nav button{background:#1a1a1a;border:1px solid #2a2a2a;color:#ccc;font-size:14px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit}
+.mini-cal-nav button:hover{border-color:#B23A3A;color:#fff}
+.mini-cal-nav .mes-txt{font-size:14px;font-weight:800;color:#fff}
 .btn-reset{background:#2a1a1a;border-color:#5a1010;color:#ffb0b0}
 .btn-reset:hover{background:#5a1010;border-color:#B23A3A;color:#fff}
 
@@ -198,13 +245,35 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 
   <div id="viewBandeja">
     <div class="bandeja-head">
-      <h2>Tus leads de hoy</h2>
+      <h2>Tus llamadas</h2>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn-refresh" onclick="cargarLeads()">↻ Actualizar</button>
         <button class="btn-refresh btn-reset" onclick="resetTodos()" title="Descartar todos los leads pendientes">🗑 Vaciar todo</button>
       </div>
     </div>
+    <div class="toolbar">
+      <div class="buscador">
+        <span class="lupa">🔍</span>
+        <input type="text" id="buscador" placeholder="Buscar por nombre o teléfono…" oninput="renderBandeja()">
+        <button class="clear-x" id="clearX" onclick="limpiarBuscador()" style="display:none">✕</button>
+      </div>
+      <button class="btn-cal" id="btnCal" onclick="abrirCalendarioFiltro()">📅 Filtrar día</button>
+    </div>
+    <div id="filtroActivo" style="display:none"></div>
     <div id="bandeja"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
+  </div>
+
+  <!-- Modal mini-calendario para filtrar por día -->
+  <div class="modal-ov" id="modalCalFiltro">
+    <div class="modal" style="max-width:340px">
+      <button class="modal-close" onclick="cerrarCalendarioFiltro()">×</button>
+      <h3>Elige un día</h3>
+      <p class="sub-modal">Solo se mostrarán los leads asignados a ese día.</p>
+      <div id="miniCalBody"></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="btn-enviar" onclick="quitarFiltroDia()" style="background:#2a2a2a;color:#bbb">Ver todos los días</button>
+      </div>
+    </div>
   </div>
 
   <div id="viewInforme" style="display:none">
@@ -470,59 +539,192 @@ function _sumarDiasISO(iso,n){
   d.setDate(d.getDate()+n);
   return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
 }
-function _grupoTitulo(clave, hoyISO){
-  if(clave==='atrasado') return '<div class="grupo-tit grupo-atr">⚠ Atrasados · toca llamar YA</div>';
-  if(clave==='hoy')      return '<div class="grupo-tit grupo-hoy">⭐ Hoy</div>';
-  if(clave==='manana')   return '<div class="grupo-tit grupo-man">📆 Mañana</div>';
-  if(clave==='prox')     return '<div class="grupo-tit grupo-prox">🗓 Próximos días</div>';
-  if(clave==='sin')      return '<div class="grupo-tit">Sin fecha asignada</div>';
-  return '';
+var _DIAS = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+var _MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+var _MESES_LARGOS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+function _cabeceraDia(iso, hoy, count){
+  var p = iso.split('-');
+  var d = new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+  var weekday = _DIAS[d.getDay()];
+  var num = d.getDate();
+  var mes = _MESES[d.getMonth()];
+  var cls = 'dia-head';
+  var extra = '';
+  if(iso === hoy){ cls += ' hoy'; extra = '<span class="badge-hoy">HOY</span>'; }
+  else if(iso < hoy){ cls += ' atr'; extra = '<span class="badge-hoy" style="background:#5a2020">ATRASADO</span>'; }
+  else if(iso === _sumarDiasISO(hoy,1)){ cls += ' man'; extra = '<span style="font-size:10px;font-weight:800;color:#AFA9EC;letter-spacing:1px">MAÑANA</span>'; }
+  else { cls += ' futuro'; }
+  return '<div class="'+cls+'">'+
+    '<span class="weekday">'+weekday+'</span>'+
+    '<span class="fecha-num">'+num+'</span>'+
+    '<span class="fecha-mes">'+mes+'</span>'+
+    extra+
+    '<span class="num-leads">'+count+' lead'+(count!==1?'s':'')+'</span>'+
+  '</div>';
+}
+
+// Estado del filtro por día (null = sin filtro)
+var FILTRO_DIA = null;
+
+function limpiarBuscador(){ document.getElementById('buscador').value=''; renderBandeja(); }
+
+function _filtrarPorBuscador(L, q){
+  if(!q) return true;
+  var qq = q.toLowerCase();
+  return (L.nombre||'').toLowerCase().indexOf(qq)>=0
+      || (L.tel||'').replace(/\\s/g,'').indexOf(qq.replace(/\\s/g,''))>=0;
 }
 
 function renderBandeja(){
   var b = document.getElementById('bandeja');
+  var filtroBanner = document.getElementById('filtroActivo');
   if(!LEADS.length){
     b.innerHTML = '<div class="empty"><b>¡Sin leads asignados!</b>Cuando Jon te asigne llamadas, aparecerán aquí.</div>';
+    if(filtroBanner) filtroBanner.style.display='none';
     return;
   }
-  var pendientes = LEADS.filter(function(l){return !l.con_parte || l.parte_estado==='rechazado';});
-  var hechos = LEADS.filter(function(l){return l.con_parte && l.parte_estado!=='rechazado';});
+  var q = (document.getElementById('buscador').value || '').trim();
+  var clearBtn = document.getElementById('clearX');
+  if(clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+
+  // Aplicar buscador
+  var pendientes = LEADS
+    .filter(function(l){return !l.con_parte || l.parte_estado==='rechazado';})
+    .filter(function(L){return _filtrarPorBuscador(L, q);});
+  var hechos = LEADS
+    .filter(function(l){return l.con_parte && l.parte_estado!=='rechazado';})
+    .filter(function(L){return _filtrarPorBuscador(L, q);});
 
   var hoy = _hoyISOTeam();
-  var manana = _sumarDiasISO(hoy, 1);
 
-  function claveGrupo(L){
-    var f = (L.fecha_llamada||'').slice(0,10);
-    if(!f) return 'sin';
-    if(f < hoy) return 'atrasado';
-    if(f === hoy) return 'hoy';
-    if(f === manana) return 'manana';
-    return 'prox';
+  // Aplicar filtro por día si está activo
+  if(FILTRO_DIA){
+    pendientes = pendientes.filter(function(L){return (L.fecha_llamada||'').slice(0,10) === FILTRO_DIA;});
+    hechos = hechos.filter(function(L){return (L.fecha_llamada||'').slice(0,10) === FILTRO_DIA;});
+    // Banner del filtro activo
+    if(filtroBanner){
+      var p = FILTRO_DIA.split('-');
+      var d = new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+      filtroBanner.className = 'filtro-activo';
+      filtroBanner.innerHTML = '<span>Filtrando por: <b>'+_DIAS[d.getDay()]+' '+d.getDate()+' '+_MESES[d.getMonth()]+'</b></span>'+
+        '<button onclick="quitarFiltroDia()">✕ Quitar filtro</button>';
+      filtroBanner.style.display='flex';
+    }
+  } else {
+    if(filtroBanner){ filtroBanner.style.display='none'; filtroBanner.innerHTML=''; }
   }
 
-  var grupos = { atrasado:[], hoy:[], manana:[], prox:[], sin:[] };
-  pendientes.forEach(function(L){ grupos[claveGrupo(L)].push(L); });
-
-  // Ordenar cada grupo por fecha
-  ['atrasado','hoy','manana','prox'].forEach(function(k){
-    grupos[k].sort(function(a,b){
-      var fa=(a.fecha_llamada||'').slice(0,10), fb=(b.fecha_llamada||'').slice(0,10);
-      return fa<fb?-1:(fa>fb?1:0);
-    });
+  // Agrupar por día exacto
+  var mapa = {}; // {iso: [leads]}
+  var sinFecha = [];
+  pendientes.forEach(function(L){
+    var f = (L.fecha_llamada||'').slice(0,10);
+    if(!f) sinFecha.push(L);
+    else { if(!mapa[f]) mapa[f]=[]; mapa[f].push(L); }
   });
+
+  // Ordenar días. Atrasados primero (más antiguos arriba), luego hoy, luego futuro.
+  var dias = Object.keys(mapa).sort();
 
   var h = '';
-  ['atrasado','hoy','manana','prox','sin'].forEach(function(k){
-    if(!grupos[k].length) return;
-    h += _grupoTitulo(k, hoy) + '<div class="grupo-badge">' + grupos[k].length + '</div>';
-    grupos[k].forEach(function(L){ h += tarjeta(L); });
+  var vacio = !dias.length && !sinFecha.length && !hechos.length;
+  if(vacio){
+    if(q || FILTRO_DIA){
+      h = '<div class="empty"><b>Nada coincide con el filtro</b>'+
+          (q?'Prueba con otro texto en el buscador.':'')+
+          (FILTRO_DIA?'<br>No tienes leads asignados a ese día.':'')+
+          '</div>';
+    } else {
+      h = '<div class="empty"><b>¡Sin leads asignados!</b>Cuando Jon te asigne llamadas, aparecerán aquí.</div>';
+    }
+    b.innerHTML = h;
+    return;
+  }
+
+  dias.forEach(function(iso){
+    var arr = mapa[iso];
+    // Ordenar dentro del día por hora si algún lead trajera hora (no la tenemos, dejamos por nombre)
+    arr.sort(function(a,bb){ return (a.nombre||'').localeCompare(bb.nombre||''); });
+    h += _cabeceraDia(iso, hoy, arr.length);
+    arr.forEach(function(L){ h += tarjeta(L); });
   });
 
+  if(sinFecha.length){
+    h += '<div class="dia-head sin"><span class="weekday">SIN FECHA</span><span class="num-leads">'+sinFecha.length+' lead'+(sinFecha.length!==1?'s':'')+'</span></div>';
+    sinFecha.sort(function(a,bb){ return (a.nombre||'').localeCompare(bb.nombre||''); });
+    sinFecha.forEach(function(L){ h += tarjeta(L); });
+  }
+
   if(hechos.length){
-    h += '<div class="grupo-tit grupo-ok">✓ Ya con parte enviado</div>';
+    h += '<div class="dia-head parte"><span class="weekday">✓ CON PARTE ENVIADO</span><span class="num-leads">'+hechos.length+'</span></div>';
     hechos.forEach(function(L){ h += tarjeta(L); });
   }
   b.innerHTML = h;
+}
+
+// ==================== FILTRO POR DÍA (mini calendario) ====================
+var _CAL_MES = null; // {y, m} en visualización actual
+function abrirCalendarioFiltro(){
+  var hoy = new Date();
+  _CAL_MES = _CAL_MES || { y: hoy.getFullYear(), m: hoy.getMonth() };
+  pintarMiniCal();
+  document.getElementById('modalCalFiltro').classList.add('open');
+}
+function cerrarCalendarioFiltro(){ document.getElementById('modalCalFiltro').classList.remove('open'); }
+function pintarMiniCal(){
+  var body = document.getElementById('miniCalBody');
+  var y = _CAL_MES.y, m = _CAL_MES.m;
+  var primDia = new Date(y, m, 1);
+  var pDow = primDia.getDay(); // 0=dom
+  var offset = pDow===0 ? 6 : pDow-1; // empezamos en Lun
+  var diasMes = new Date(y, m+1, 0).getDate();
+  var hoyISO = _hoyISOTeam();
+
+  // Contar leads por día
+  var counts = {};
+  LEADS.filter(function(l){return !l.con_parte || l.parte_estado==='rechazado';}).forEach(function(L){
+    var f = (L.fecha_llamada||'').slice(0,10);
+    if(f) counts[f] = (counts[f]||0)+1;
+  });
+
+  var h = '<div class="mini-cal-nav">'+
+    '<button onclick="navCal(-1)">‹</button>'+
+    '<span class="mes-txt">'+_MESES_LARGOS[m]+' '+y+'</span>'+
+    '<button onclick="navCal(1)">›</button>'+
+  '</div><div class="mini-cal">';
+  ['L','M','X','J','V','S','D'].forEach(function(d){ h += '<div class="mc-dow">'+d+'</div>'; });
+  for(var i=0;i<offset;i++) h += '<div></div>';
+  for(var d=1; d<=diasMes; d++){
+    var iso = y+'-'+('0'+(m+1)).slice(-2)+'-'+('0'+d).slice(-2);
+    var cls = 'mc-day';
+    if(iso === hoyISO) cls += ' hoy';
+    if(counts[iso]) cls += ' con-leads';
+    if(iso === FILTRO_DIA) cls += ' sel';
+    var count = counts[iso] ? '<span style="font-size:8.5px;color:#FAC775">'+counts[iso]+'</span>' : '';
+    h += '<button class="'+cls+'" onclick="filtrarPorDia(\''+iso+'\')">'+d+count+'</button>';
+  }
+  h += '</div>';
+  body.innerHTML = h;
+}
+function navCal(delta){
+  _CAL_MES.m += delta;
+  if(_CAL_MES.m < 0){ _CAL_MES.m=11; _CAL_MES.y--; }
+  if(_CAL_MES.m > 11){ _CAL_MES.m=0; _CAL_MES.y++; }
+  pintarMiniCal();
+}
+function filtrarPorDia(iso){
+  FILTRO_DIA = iso;
+  var btn = document.getElementById('btnCal');
+  if(btn) btn.classList.add('on');
+  cerrarCalendarioFiltro();
+  renderBandeja();
+}
+function quitarFiltroDia(){
+  FILTRO_DIA = null;
+  var btn = document.getElementById('btnCal');
+  if(btn) btn.classList.remove('on');
+  cerrarCalendarioFiltro();
+  renderBandeja();
 }
 
 function _estadoBadge(estado){
@@ -671,174 +873,78 @@ function toggleDetalle(idAsig){
     if(L2.mail) rows += '<div class="row"><b>Email</b><span>'+escapeHtml(L2.mail)+'</span></div>';
     if(L2.interes) rows += '<div class="row"><b>Interés</b><span>'+escapeHtml(L2.interes)+'</span></div>';
     if(L2.procedencia) rows += '<div class="row"><b>Procedencia</b><span>'+escapeHtml(L2.procedencia)+'</span></div>';
-    if(L2.estado) rows += '<div class="row"><b>Estado actual</b><span>'+escapeHtml(L2.estado)+'</span></div>';
-    if(L2.fechaGestion) rows += '<div class="row"><b>Entró el</b><span>'+escapeHtml(L2.fechaGestion)+'</span></div>';
-    if(L2.fechaVisita) rows += '<div class="row"><b>Visita</b><span>'+escapeHtml(L2.fechaVisita)+(L2.horaVisita?' a las '+escapeHtml(L2.horaVisita):'')+'</span></div>';
+    if(L2.estado) rows += '<div class="row"><b>Estado</b><span>'+escapeHtml(L2.estado)+'</span></div>';
     var hist = L2.nota?'<div class="historial">'+escapeHtml(L2.nota)+'</div>':'';
     d.innerHTML = rows + hist;
     d.dataset.loaded='1';
   });
 }
 
-// ---- MODAL PARTE ----
-var PARTE_ACTUAL = {id_asignacion:null, resultado:null};
+// ==================== MODAL PARTE ====================
+var PARTE_ACTUAL = {id_asignacion:null, resultado:null, lead:null};
 function abrirParte(idAsig){
   var L = LEADS.filter(function(x){return x.id_asignacion===idAsig;})[0];
   if(!L) return;
   PARTE_ACTUAL = {id_asignacion:idAsig, lead:L, resultado:null};
-  PARTE_PROX_TIPO = '';
   renderParte();
   document.getElementById('modalParte').classList.add('open');
 }
-function cerrarParte(){
-  document.getElementById('modalParte').classList.remove('open');
-  PARTE_ACTUAL = {id_asignacion:null, resultado:null};
-  PARTE_PROX_TIPO = '';
-}
-
+function cerrarParte(){ document.getElementById('modalParte').classList.remove('open'); PARTE_ACTUAL = {id_asignacion:null, resultado:null, lead:null}; }
 function renderParte(){
   var L = PARTE_ACTUAL.lead;
   var body = document.getElementById('modalParteBody');
   body.innerHTML =
-    '<h3>📝 Parte de llamada</h3>'+
+    '<h3>Parte de llamada</h3>'+
     '<p class="sub-modal">'+escapeHtml(L.nombre||'(sin nombre)')+' · '+escapeHtml(L.tel||'')+'</p>'+
-
-    '<label>¿Qué pasó al llamar?</label>'+
+    '<label>¿Qué ha pasado?</label>'+
     '<div class="res-grid">'+
-      '<button type="button" class="res-btn" data-res="cogio" onclick="elegirRes(\'cogio\')">📞 Cogió</button>'+
-      '<button type="button" class="res-btn" data-res="no_cogio" onclick="elegirRes(\'no_cogio\')">❌ No cogió</button>'+
-      '<button type="button" class="res-btn" data-res="buzon" onclick="elegirRes(\'buzon\')">📭 Buzón de voz</button>'+
-      '<button type="button" class="res-btn" data-res="apagado" onclick="elegirRes(\'apagado\')">📴 Apagado</button>'+
+      '<button type="button" class="res-btn" onclick="elegirResultado(\'cogio\',this)">✅ Cogió</button>'+
+      '<button type="button" class="res-btn" onclick="elegirResultado(\'no_cogio\',this)">❌ No cogió</button>'+
+      '<button type="button" class="res-btn" onclick="elegirResultado(\'buzon\',this)">📼 Buzón</button>'+
+      '<button type="button" class="res-btn" onclick="elegirResultado(\'ocupado\',this)">⛔ Ocupado/Ilocalizable</button>'+
     '</div>'+
-
-    '<div id="bloqueDetalle" style="display:none">'+
-
-      '<label>Qué te dijo / qué quiere</label>'+
-      '<textarea id="pNota" placeholder="Resume la conversación: qué quería, qué le interesó, dudas..."></textarea>'+
-
-      '<div class="bloque" id="bloqueEstado">'+
-        '<div class="titulo">¿Cambia de estado?</div>'+
-        '<select id="pEstado">'+
-          '<option value="">— Dejar como está —</option>'+
-          '<option value="E2">E2 · Interés WAS (le interesa, mandar más info por WA)</option>'+
-          '<option value="E3">E3 · No contesta / no interesado</option>'+
-          '<option value="E4">E4 · Quiere reservar clase de prueba</option>'+
-          '<option value="E5">E5 · Reserva confirmada (tienes fecha de visita)</option>'+
-          '<option value="E6">E6 · Ya ha visitado el gimnasio</option>'+
-          '<option value="E7">E7 · Quiere contratar</option>'+
-          '<option value="E9">E9 · Basura / no es nuestro perfil</option>'+
-        '</select>'+
-
-        '<div id="visitaBox" style="display:none;margin-top:8px">'+
-          '<label>Fecha y hora de la visita</label>'+
-          '<div class="fila-2">'+
-            '<input type="date" id="pVisitaFecha">'+
-            '<input type="time" id="pVisitaHora" step="900">'+
-          '</div>'+
-        '</div>'+
+    '<label>Nota (qué te dijo, resumen)</label>'+
+    '<textarea id="pNota" placeholder="Ha pedido más info, quiere venir el jueves a las 10..."></textarea>'+
+    '<label>Propuesta de nuevo estado (opcional)</label>'+
+    '<select id="pEstado" style="width:100%;background:#0a0a0a;border:1.5px solid #2a2a2a;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;font-family:inherit">'+
+      '<option value="">— Sin cambio —</option>'+
+      '<option value="E2">E2 · Interés</option>'+
+      '<option value="E3">E3 · No contesta</option>'+
+      '<option value="E4">E4 · Quiere reservar</option>'+
+      '<option value="E5">E5 · Reserva confirmada</option>'+
+      '<option value="E6">E6 · Ha visitado</option>'+
+      '<option value="E7">E7 · Quiere contratar</option>'+
+      '<option value="E9">E9 · Basura</option>'+
+    '</select>'+
+    '<div id="visitaBox" style="display:none">'+
+      '<label>Fecha y hora de la visita</label>'+
+      '<div class="fila-2">'+
+        '<input type="date" id="pVisitaFecha">'+
+        '<input type="time" id="pVisitaHora" step="900">'+
       '</div>'+
-
-      '<div class="bloque">'+
-        '<div class="titulo">¿Próximo contacto? (Jon lo verá en su agenda)</div>'+
-        '<div class="res-grid" style="margin-bottom:8px">'+
-          '<button type="button" class="res-btn" data-prox="" onclick="elegirProxTipo(\'\')">— Nada por ahora —</button>'+
-          '<button type="button" class="res-btn" data-prox="llamada" onclick="elegirProxTipo(\'llamada\')">📞 Llamada</button>'+
-          '<button type="button" class="res-btn" data-prox="mensaje" onclick="elegirProxTipo(\'mensaje\')">💬 Mensaje</button>'+
-        '</div>'+
-        '<div id="proxDetalle" style="display:none">'+
-          '<label id="proxLabelFecha" style="display:block;font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 6px">Fecha</label>'+
-          '<div class="fila-3">'+
-            '<input type="date" id="pProxFecha">'+
-            '<input type="time" id="pProxHora" step="900">'+
-          '</div>'+
-          '<label id="proxLabelTexto" style="display:block;font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px">Tema de la llamada</label>'+
-          '<textarea id="pProxNota" placeholder="Ej: confirma cuando lo hable con su mujer"></textarea>'+
-        '</div>'+
-      '</div>'+
-
     '</div>'+
-
+    '<label>Propuesta de próximo contacto (opcional)</label>'+
+    '<div class="fila-2">'+
+      '<input type="date" id="pProxFecha">'+
+      '<input type="time" id="pProxHora">'+
+    '</div>'+
+    '<input type="text" id="pProxNota" placeholder="Motivo del próximo contacto" style="margin-top:6px">'+
+    '<label class="toggle"><input type="checkbox" id="pSugWa"> Sugiere que Jon le mande un WhatsApp</label>'+
+    '<div id="waBox" style="display:none">'+
+      '<label>Texto sugerido del WhatsApp</label>'+
+      '<textarea id="pTextoWa" placeholder="Hola Marta, tal como hablamos..."></textarea>'+
+    '</div>'+
     '<div class="err" id="parteErr"></div>'+
-    '<button class="btn-enviar" id="parteEnviar" onclick="enviarParte()" style="display:none">Enviar parte a Jon</button>';
+    '<button class="btn-enviar" id="parteEnviar" onclick="enviarParte()">Enviar parte a Jon</button>';
+  document.getElementById('pSugWa').addEventListener('change', function(e){
+    document.getElementById('waBox').style.display = e.target.checked ? 'block' : 'none';
+  });
 }
-
-function elegirRes(r){
+function elegirResultado(r, btn){
   PARTE_ACTUAL.resultado = r;
-  document.querySelectorAll('.res-btn').forEach(function(b){
-    b.classList.remove('sel','sel-ok');
-    if(b.dataset.res===r) b.classList.add(r==='cogio'?'sel-ok':'sel');
-  });
-  // Si NO cogió: enviar parte automáticamente sin pedir nada más.
-  // Jon decidirá al aprobar si reasigna a otro entrenador.
-  if(r !== 'cogio'){
-    enviarParteAuto(r);
-    return;
-  }
-  document.getElementById('bloqueDetalle').style.display='block';
-  document.getElementById('parteEnviar').style.display='block';
-  document.getElementById('bloqueEstado').style.display='block';
+  Array.prototype.forEach.call(document.querySelectorAll('.res-btn'), function(b){b.classList.remove('sel','sel-ok');});
+  btn.classList.add(r==='cogio' ? 'sel-ok' : 'sel');
 }
-function enviarParteAuto(res){
-  var params = {
-    action:'enviar_parte',
-    id_asignacion: PARTE_ACTUAL.id_asignacion,
-    id_entrenador: SESSION.id,
-    resultado: res,
-    nota_entrenador: '',
-    propuesta_estado: '',
-    propuesta_prox_fecha: '',
-    propuesta_prox_hora: '',
-    propuesta_prox_tipo: '',
-    propuesta_prox_nota: '',
-    propuesta_visita_fecha: '',
-    propuesta_visita_hora: '',
-    sugerir_wa: 'false',
-    texto_wa: ''
-  };
-  document.getElementById('modalParteBody').innerHTML =
-    '<div class="ok-msg"><div class="check"><span class="spinner"></span></div><h3>Enviando…</h3></div>';
-  jsonp(params, function(r){
-    if(r && r.ok){
-      var lbl = {no_cogio:'No cogió', buzon:'Buzón', apagado:'Apagado'}[res] || res;
-      document.getElementById('modalParteBody').innerHTML =
-        '<div class="ok-msg"><div class="check">✓</div><h3>'+lbl+' registrado</h3><p>El lead se reagendará automáticamente. Pasa al siguiente.</p></div>'+
-        '<button class="btn-enviar" onclick="cerrarParte();cargarLeads(true)">Siguiente</button>';
-    } else {
-      document.getElementById('modalParteBody').innerHTML =
-        '<div class="ok-msg"><div class="check" style="color:#ff7a7a">⚠</div><h3>Error</h3><p>'+((r&&r.error)||'No se pudo enviar')+'</p></div>'+
-        '<button class="btn-enviar" onclick="cerrarParte()">Cerrar</button>';
-    }
-  });
-}
-
-var PARTE_PROX_TIPO = '';
-function elegirProxTipo(t){
-  PARTE_PROX_TIPO = t;
-  document.querySelectorAll('button[data-prox]').forEach(function(b){
-    b.classList.remove('sel','sel-ok');
-    if(b.dataset.prox===t) b.classList.add(t==='mensaje'?'sel-ok':'sel');
-  });
-  var det = document.getElementById('proxDetalle');
-  var hora = document.getElementById('pProxHora');
-  var labelTexto = document.getElementById('proxLabelTexto');
-  var nota = document.getElementById('pProxNota');
-  if(!t){
-    det.style.display='none';
-    return;
-  }
-  det.style.display='block';
-  if(t==='llamada'){
-    hora.style.display='block';
-    labelTexto.textContent='Tema de la llamada';
-    nota.placeholder='Qué hay que tratar en la llamada (ej: confirmar día de la prueba).';
-  } else {
-    hora.style.display='none';
-    labelTexto.textContent='Texto del mensaje que Jon debe mandar';
-    nota.placeholder='Escribe el mensaje completo que Jon enviará por WhatsApp.';
-  }
-}
-
-// Mostrar fecha visita si estado es E5
 document.addEventListener('change', function(e){
   if(e.target && e.target.id==='pEstado'){
     document.getElementById('visitaBox').style.display = (e.target.value==='E5')?'block':'none';
@@ -917,35 +1023,6 @@ function enviarParte(){
     cargarBotonesLogin();
   }
 })();
-// Auto-refresh DESACTIVADO. Solo actualiza al pulsar el botón Actualizar.
-</script>
-</body>
-</html>
-i no había nada guardado.
-    var cache = _cacheLeer();
-    if(cache && cache.leads && cache.leads.length){
-      LEADS = cache.leads;
-      renderBandeja();
-    } else {
-      cargarLeads();
-    }
-  } else {
-    document.getElementById('vLogin').style.display='block';
-    cargarBotonesLogin();
-  }
-})();
-
-// Auto-refresh DESACTIVADO. La app solo se actualiza cuando el usuario pulsa
-// el botón "Actualizar" arriba a la derecha, para evitar espera constante.
-</script>
-</body>
-</html>
-o refrescar si han pasado más de 30 segundos
-document.addEventListener('visibilitychange', function(){
-  if(!document.hidden && SESSION && TAB_ACTUAL==='bandeja'){
-    if(Date.now() - LAST_FETCH_TS > 30000) cargarLeads(true);
-  }
-});
 </script>
 </body>
 </html>
