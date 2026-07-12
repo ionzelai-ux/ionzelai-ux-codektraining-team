@@ -61,6 +61,11 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .btn-parte{background:#B23A3A;color:#fff;border:none;font-size:14px;font-weight:700;padding:11px;border-radius:8px;cursor:pointer;font-family:inherit}
 .btn-parte:hover{background:#c44848}
 .btn-parte.completado{background:#2a2a2a;color:#888;cursor:default}
+.btn-reagendar{width:100%;background:#1a1a08;border:1.5px solid #BA7517;color:#FAC775;font-size:13px;font-weight:700;padding:9px;border-radius:8px;cursor:pointer;font-family:inherit}
+.btn-reagendar:hover{background:#3a2a08;color:#fff}
+.re-quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.re-quick button{background:#1a1a08;border:1px solid #BA7517;color:#FAC775;font-size:12px;padding:6px 10px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600}
+.re-quick button:hover{background:#3a2a08;color:#fff}
 .btn-detalle{background:none;border:none;color:#888;font-size:12px;margin-top:8px;cursor:pointer;font-family:inherit;text-decoration:underline}
 .btn-detalle:hover{color:#fff}
 .detalle{margin-top:10px;background:#0a0a0a;border:1px solid #1f1f1f;border-radius:8px;padding:10px;font-size:12px;color:#bbb;display:none;line-height:1.55}
@@ -304,6 +309,27 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
   </div>
 </div>
 
+<!-- MODAL REAGENDAR -->
+<div class="modal-ov" id="modalReagendar">
+  <div class="modal" style="max-width:400px">
+    <button class="modal-close" onclick="cerrarReagendar()">×</button>
+    <h3>📅 Reagendar llamada</h3>
+    <p class="sub-modal" id="reagSub"></p>
+    <label>Nueva fecha para llamar</label>
+    <input type="date" id="reagFecha">
+    <div class="re-quick">
+      <button type="button" onclick="reagRapida(1)">Mañana</button>
+      <button type="button" onclick="reagRapida(2)">En 2 días</button>
+      <button type="button" onclick="reagRapida(3)">En 3 días</button>
+      <button type="button" onclick="reagRapida(7)">En 1 semana</button>
+    </div>
+    <label>Nota corta (opcional)</label>
+    <input type="text" id="reagNota" placeholder="Ej: llamar a las 15h, dijo que a esa hora sí puede">
+    <div class="err" id="reagErr"></div>
+    <button class="btn-enviar" onclick="confirmarReagendar()" style="margin-top:14px">Confirmar reagendado</button>
+  </div>
+</div>
+
 <script>
 var SYNC_URL='https://script.google.com/macros/s/AKfycbxLrYar_Enx5Uk49uXtxi0ok87eFZaNGuMYllbAx0KlFNu8A6kaFJFUAHm1hiJ2r4SxRg/exec';
 var TOKEN='codek-9fK2mP7qX4';
@@ -442,6 +468,44 @@ function descartarLead(idAsig, nombre){
   renderBandeja();
   // Aviso al backend en segundo plano
   jsonp({action:'descartar_asignacion', id_asignacion:idAsig, id_entrenador:SESSION.id}, function(r){
+    if(!(r && r.ok)) alert('Aviso: no se pudo confirmar en el servidor: '+((r&&r.error)||'error desconocido'));
+  });
+}
+
+// ==================== REAGENDAR ====================
+var _REAG_ID = null;
+function abrirReagendar(idAsig){
+  var L = LEADS.filter(function(x){return x.id_asignacion===idAsig;})[0];
+  if(!L) return;
+  _REAG_ID = idAsig;
+  document.getElementById('reagSub').textContent = (L.nombre||L.tel||'lead');
+  // Fecha por defecto: mañana
+  document.getElementById('reagFecha').value = _sumarDiasISO(_hoyISOTeam(), 1);
+  document.getElementById('reagNota').value = '';
+  document.getElementById('reagErr').textContent = '';
+  document.getElementById('modalReagendar').classList.add('open');
+}
+function cerrarReagendar(){ document.getElementById('modalReagendar').classList.remove('open'); _REAG_ID = null; }
+function reagRapida(dias){
+  document.getElementById('reagFecha').value = _sumarDiasISO(_hoyISOTeam(), dias);
+}
+function confirmarReagendar(){
+  if(!_REAG_ID || !SESSION) return;
+  var fecha = document.getElementById('reagFecha').value;
+  var nota = document.getElementById('reagNota').value.trim();
+  var err = document.getElementById('reagErr');
+  if(!fecha){ err.textContent='Elige una fecha.'; return; }
+  err.textContent='';
+  // Actualización local inmediata
+  var idAsig = _REAG_ID;
+  LEADS.forEach(function(L){
+    if(L.id_asignacion === idAsig){ L.fecha_llamada = fecha; }
+  });
+  _cacheGuardar();
+  cerrarReagendar();
+  renderBandeja();
+  // Sync al backend en segundo plano
+  jsonp({action:'reagendar_asignacion', id_asignacion:idAsig, id_entrenador:SESSION.id, fecha_llamada:fecha, nota_extra:nota}, function(r){
     if(!(r && r.ok)) alert('Aviso: no se pudo confirmar en el servidor: '+((r&&r.error)||'error desconocido'));
   });
 }
@@ -841,6 +905,8 @@ function tarjeta(L){
 
   var btnDescartar = '<button class="btn-descartar" title="Descartar este lead (quitarlo de tu bandeja)" onclick="descartarLead(\''+L.id_asignacion+'\',\''+escapeHtml((L.nombre||L.tel||'este lead').replace(/\'/g,''))+'\')">✕</button>';
 
+  var btnReagendar = '<button class="btn-reagendar" onclick="abrirReagendar(\''+L.id_asignacion+'\')">📅 Reagendar</button>';
+
   return '<div class="'+clase+'">'+
     btnDescartar +
     '<div class="card-top">'+
@@ -852,6 +918,7 @@ function tarjeta(L){
     '</div>'+
     metricas + contacto + proximo + notaJon + notaRech + historial +
     '<div class="card-actions">'+telLink+btnParte+'</div>'+
+    '<div style="margin-top:6px">'+btnReagendar+'</div>'+
   '</div>';
 }
 
