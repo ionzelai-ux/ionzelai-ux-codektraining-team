@@ -216,6 +216,22 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .ok-msg h3{font-size:20px;color:#fff;margin-bottom:6px;font-weight:800}
 .ok-msg p{font-size:13px;color:#999}
 
+/* ---- BOLSA ---- */
+.tag.bolsa{background:#1d1530;color:#c4b5fd}
+.bolsa-cupo{font-size:12px;color:#bbb;background:#0f0f0f;border:1px solid #2a2a2a;border-radius:10px;padding:9px 12px;margin-bottom:12px}
+.bolsa-cupo b{color:#fff}
+.bolsa-cupo.lleno{border-color:#B23A3A;color:#ffb0b0}
+.bolsa-filtros{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.bolsa-filtros button{background:#141414;border:1px solid #2a2a2a;color:#bbb;font-size:12px;font-weight:600;padding:7px 11px;border-radius:16px;cursor:pointer;font-family:inherit}
+.bolsa-filtros button.on{background:#B23A3A;border-color:#B23A3A;color:#fff}
+.bolsa-intento{margin-top:9px;background:#0a0a0a;border-left:3px solid #666;border-radius:6px;padding:7px 10px;font-size:12px;color:#bbb}
+.bolsa-intento b{color:#ddd}
+.btn-coger{width:100%;margin-top:11px;background:#5b3fd1;color:#fff;border:none;font-size:14px;font-weight:800;padding:11px;border-radius:8px;cursor:pointer;font-family:inherit}
+.btn-coger:hover{background:#6d52e0}
+.btn-coger:disabled{opacity:.45;cursor:default}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1B7A3D;color:#fff;font-size:14px;font-weight:700;padding:11px 18px;border-radius:10px;z-index:200;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.toast.err{background:#A32D2D}
+
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid #333;border-top-color:#B23A3A;border-radius:50%;animation:sp 0.7s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes sp{to{transform:rotate(360deg)}}
 .loading{text-align:center;color:#777;padding:50px 20px}
@@ -245,7 +261,18 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 <main id="vMain" style="display:none">
   <div style="display:flex;gap:6px;margin-bottom:14px;padding:4px;background:#0f0f0f;border-radius:10px">
     <button id="tabBandeja" class="tab-btn tab-on" onclick="mostrarTab('bandeja')">📋 Mis leads</button>
+    <button id="tabBolsa" class="tab-btn" onclick="mostrarTab('bolsa')">🎯 Bolsa</button>
     <button id="tabInforme" class="tab-btn" onclick="mostrarTab('informe')">📊 Mi informe</button>
+  </div>
+
+  <div id="viewBolsa" style="display:none">
+    <div class="bandeja-head">
+      <h2>Bolsa de leads</h2>
+      <button class="btn-refresh" onclick="cargarBolsa()">↻ Actualizar</button>
+    </div>
+    <div id="bolsaCupo" class="bolsa-cupo" style="display:none"></div>
+    <div class="bolsa-filtros" id="bolsaFiltros"></div>
+    <div id="bolsaLista"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
   </div>
 
   <div id="viewBandeja">
@@ -360,7 +387,7 @@ function jsonp(params, cb){
   script.src = url;
   script.onerror = function(){if(!done){done=true;cb({ok:false,error:'red'});}};
   document.body.appendChild(script);
-  setTimeout(function(){if(!done){done=true;cb({ok:false,error:'timeout'});}},15000);
+  setTimeout(function(){if(!done){done=true;cb({ok:false,error:'timeout'});}},30000);
 }
 
 // ---- LOGIN sin PIN: botones con los entrenadores ----
@@ -388,11 +415,13 @@ function entrarComo(ent){
   SESSION = {id:ent.id, nombre:ent.nombre};
   saveSession(SESSION);
   mostrarBandeja();
-  // Pinta caché al instante. Solo llama al backend si no había nada guardado.
+  // Pinta caché al instante y refresca por debajo (si no, las asignaciones
+  // nuevas no aparecían hasta pulsar Actualizar).
   var cache = _cacheLeer();
   if(cache && cache.leads && cache.leads.length){
     LEADS = cache.leads;
     renderBandeja();
+    cargarLeads(true);
   } else {
     cargarLeads();
   }
@@ -457,7 +486,7 @@ function cargarLeads(silencioso){
   });
 }
 
-function iniciales(s){ if(!s) return '?'; var p=s.trim().split(/\\s+/); return ((p[0]||'').charAt(0)+(p[1]||'').charAt(0)).toUpperCase()||'?'; }
+function iniciales(s){ if(!s) return '?'; var p=s.trim().split(/\s+/); return ((p[0]||'').charAt(0)+(p[1]||'').charAt(0)).toUpperCase()||'?'; }
 
 function descartarLead(idAsig, nombre){
   if(!SESSION) return;
@@ -534,10 +563,108 @@ var INFORME_PERIODO = 'hoy';
 function mostrarTab(t){
   TAB_ACTUAL = t;
   document.getElementById('tabBandeja').classList.toggle('tab-on', t==='bandeja');
+  document.getElementById('tabBolsa').classList.toggle('tab-on', t==='bolsa');
   document.getElementById('tabInforme').classList.toggle('tab-on', t==='informe');
   document.getElementById('viewBandeja').style.display = t==='bandeja' ? 'block' : 'none';
+  document.getElementById('viewBolsa').style.display = t==='bolsa' ? 'block' : 'none';
   document.getElementById('viewInforme').style.display = t==='informe' ? 'block' : 'none';
   if(t==='informe') cargarInforme();
+  if(t==='bolsa') cargarBolsa();
+}
+
+// ==================== BOLSA ====================
+// Leads que Jon ha mandado a la bolsa. Sin teléfono: aparece al quedártelo.
+var BOLSA = [], BOLSA_CUPO = {usados:0, limite:5}, BOLSA_FILTRO = '';
+function cargarBolsa(){
+  if(!SESSION) return;
+  var lista = document.getElementById('bolsaLista');
+  if(!BOLSA.length) lista.innerHTML = '<div class="loading"><span class="spinner"></span>Cargando…</div>';
+  jsonp({action:'bolsa', id_entrenador:SESSION.id}, function(r){
+    if(!r || !r.ok){ lista.innerHTML = '<div class="empty"><b>No se ha podido cargar la bolsa.</b>Pulsa Actualizar en un momento.</div>'; return; }
+    // Un backend sin bolsa responde con la lista general (sin 'limite'): no pintarla.
+    if(typeof r.limite === 'undefined'){ lista.innerHTML = '<div class="empty"><b>La bolsa aún no está activada.</b>Avisa a Jon.</div>'; return; }
+    BOLSA = r.leads || [];
+    BOLSA_CUPO = {usados:r.mis_sin_parte||0, limite:r.limite||5};
+    renderBolsa();
+  });
+}
+function filtrarBolsa(f){ BOLSA_FILTRO = f; renderBolsa(); }
+function renderBolsa(){
+  var cupo = document.getElementById('bolsaCupo');
+  var lleno = BOLSA_CUPO.usados >= BOLSA_CUPO.limite;
+  cupo.style.display = 'block';
+  cupo.className = 'bolsa-cupo' + (lleno ? ' lleno' : '');
+  cupo.innerHTML = lleno
+    ? '⚠ Tienes <b>'+BOLSA_CUPO.usados+'/'+BOLSA_CUPO.limite+'</b> leads de la bolsa sin parte. Haz sus partes para poder coger más.'
+    : 'Tienes <b>'+BOLSA_CUPO.usados+'/'+BOLSA_CUPO.limite+'</b> leads de la bolsa sin parte.';
+  // Filtros por interés (solo los que existen en la bolsa)
+  var intereses = {};
+  BOLSA.forEach(function(l){ var k=l.interes||'Sin definir'; intereses[k]=(intereses[k]||0)+1; });
+  var fh = '<button class="'+(BOLSA_FILTRO===''?'on':'')+'" onclick="filtrarBolsa(\'\')">Todos ('+BOLSA.length+')</button>';
+  Object.keys(intereses).sort().forEach(function(k){
+    fh += '<button class="'+(BOLSA_FILTRO===k?'on':'')+'" onclick="filtrarBolsa(\''+escapeHtml(k).replace(/'/g,'')+'\')">'+escapeHtml(k)+' ('+intereses[k]+')</button>';
+  });
+  document.getElementById('bolsaFiltros').innerHTML = BOLSA.length ? fh : '';
+  var lista = document.getElementById('bolsaLista');
+  var items = BOLSA.filter(function(l){ return !BOLSA_FILTRO || (l.interes||'Sin definir')===BOLSA_FILTRO; });
+  if(!BOLSA.length){ lista.innerHTML = '<div class="empty"><b>La bolsa está vacía</b>Cuando Jon mande leads a la bolsa, aparecerán aquí.</div>'; return; }
+  if(!items.length){ lista.innerHTML = '<div class="empty"><b>Nada con ese interés</b>Prueba con otro filtro.</div>'; return; }
+  var resLbl = {cogio:'cogió', no_cogio:'no cogió', buzon:'buzón', apagado:'apagado/ocupado'};
+  lista.innerHTML = items.map(function(l){
+    var tags = '';
+    if(l.estado) tags += _estadoBadge(l.estado);
+    if(l.interes) tags += '<span class="tag interes">'+escapeHtml(l.interes)+'</span>';
+    if(l.procedencia) tags += '<span class="tag proc">'+escapeHtml(l.procedencia)+'</span>';
+    var dd = _diasDesde(l.fecha_gestion);
+    var entro = l.fecha_gestion ? (_fmtFecha(l.fecha_gestion)+' · '+(dd===0?'hoy':(dd===1?'ayer':'hace '+dd+' días'))) : '—';
+    var intento = '';
+    if(l.intentos){
+      var u = l.ultimo || {};
+      intento = '<div class="bolsa-intento"><b>'+l.intentos+' intento'+(l.intentos!==1?'s':'')+'</b> · último: '+escapeHtml(resLbl[u.resultado]||u.resultado||'')+
+        ' ('+escapeHtml(u.entrenador||'')+', '+escapeHtml(_fmtFecha(u.fecha))+' '+escapeHtml((u.fecha||'').substring(11,16))+')'+
+        (u.nota?'<br><i>'+escapeHtml(u.nota)+'</i>':'')+'</div>';
+    }
+    return '<div class="card" id="bolsa_'+escapeHtml(l.id_lead)+'">'+
+      '<div class="card-top">'+
+        '<div class="av" style="background:#5b3fd1">'+iniciales(l.nombre)+'</div>'+
+        '<div class="card-info">'+
+          '<div class="card-name">'+escapeHtml(l.nombre||'(sin nombre)')+'</div>'+
+          '<div class="card-tags">'+tags+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="card-metrics"><div class="metric"><span class="metric-lbl">Entró</span><span class="metric-val">'+entro+'</span></div></div>'+
+      intento+
+      '<button class="btn-coger" '+(lleno?'disabled':'')+' onclick="cogerLead(\''+escapeHtml(l.id_lead)+'\',this)">🙋 Me lo quedo</button>'+
+    '</div>';
+  }).join('');
+}
+function cogerLead(idLead, btn){
+  if(!SESSION) return;
+  if(btn){ btn.disabled = true; btn.textContent = 'Cogiendo…'; }
+  jsonp({action:'coger_lead', id_lead:idLead, id_entrenador:SESSION.id}, function(r){
+    if(r && r.ok && r.id_asignacion){
+      BOLSA = BOLSA.filter(function(l){ return l.id_lead !== idLead; });
+      BOLSA_CUPO.usados++;
+      renderBolsa();
+      toast('✓ Añadido a tus llamadas de hoy');
+      cargarLeads(true);
+      return;
+    }
+    var e = r && r.error;
+    if(e==='ya_cogido') toast('Ya lo ha cogido '+(r.por||'otro compañero'), true);
+    else if(e==='limite') toast('Tienes '+(r.limite||5)+' sin parte: haz sus partes primero', true);
+    else if(e==='fuera_bolsa') toast('Jon lo ha sacado de la bolsa', true);
+    else if(e==='timeout') toast('Tarda en responder: pulsa Actualizar para comprobar', true);
+    else toast('No se ha podido: '+(e||'error'), true);
+    cargarBolsa();
+  });
+}
+function toast(msg, esError){
+  var t = document.createElement('div');
+  t.className = 'toast' + (esError ? ' err' : '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 3200);
 }
 function rangoPeriodo(per){
   // Devuelve {desde, hasta} en yyyy-mm-dd (zona local del navegador)
@@ -636,14 +763,14 @@ function _filtrarPorBuscador(L, q){
   if(!q) return true;
   var qq = q.toLowerCase();
   return (L.nombre||'').toLowerCase().indexOf(qq)>=0
-      || (L.tel||'').replace(/\\s/g,'').indexOf(qq.replace(/\\s/g,''))>=0;
+      || (L.tel||'').replace(/\s/g,'').indexOf(qq.replace(/\s/g,''))>=0;
 }
 
 function renderBandeja(){
   var b = document.getElementById('bandeja');
   var filtroBanner = document.getElementById('filtroActivo');
   if(!LEADS.length){
-    b.innerHTML = '<div class="empty"><b>¡Sin leads asignados!</b>Cuando Jon te asigne llamadas, aparecerán aquí.</div>';
+    b.innerHTML = '<div class="empty"><b>¡Sin leads asignados!</b>Cuando Jon te asigne llamadas aparecerán aquí. También puedes coger leads de la <a href="#" onclick="mostrarTab(\'bolsa\');return false" style="color:#c4b5fd">🎯 Bolsa</a>.</div>';
     if(filtroBanner) filtroBanner.style.display='none';
     return;
   }
@@ -699,7 +826,7 @@ function renderBandeja(){
           (FILTRO_DIA?'<br>No tienes leads asignados a ese día.':'')+
           '</div>';
     } else {
-      h = '<div class="empty"><b>¡Sin leads asignados!</b>Cuando Jon te asigne llamadas, aparecerán aquí.</div>';
+      h = '<div class="empty"><b>¡Sin leads asignados!</b>Cuando Jon te asigne llamadas aparecerán aquí. También puedes coger leads de la <a href="#" onclick="mostrarTab(\'bolsa\');return false" style="color:#c4b5fd">🎯 Bolsa</a>.</div>';
     }
     b.innerHTML = h;
     return;
@@ -835,6 +962,7 @@ function tarjeta(L){
   if(L.estado) tags += _estadoBadge(L.estado);
   if(L.interes) tags += '<span class="tag interes">'+escapeHtml(L.interes)+'</span>';
   if(L.procedencia) tags += '<span class="tag proc">'+escapeHtml(L.procedencia)+'</span>';
+  if(L.origen==='bolsa') tags += '<span class="tag bolsa">🎯 De la bolsa</span>';
   if(L.con_parte && L.parte_estado==='pendiente') tags += '<span class="tag parte-ok">Parte enviado · Pendiente</span>';
   if(L.parte_estado==='rechazado') tags += '<span class="tag parte-rech">⚠ Rechazado · corrige</span>';
 
@@ -893,7 +1021,7 @@ function tarjeta(L){
   var historial = L.nota_lead ? '<div class="historial-lead"><b>📜 Historial del lead</b><div class="hist-body">'+escapeHtml(L.nota_lead)+'</div></div>' : '';
 
   // ---- Acciones ----
-  var telLink = L.tel ? '<a class="btn-call" href="tel:'+encodeURIComponent(L.tel)+'">📞 Llamar</a>' : '<button class="btn-call" disabled style="opacity:.4">Sin tel.</button>';
+  var telLink = L.tel ? '<a class="btn-call" href="tel:'+telHref(L.tel)+'">📞 Llamar</a>' : '<button class="btn-call" disabled style="opacity:.4">Sin tel.</button>';
   var btnParte;
   if(L.con_parte && L.parte_estado==='pendiente'){
     btnParte = '<button class="btn-parte completado" disabled>✓ Parte enviado</button>';
@@ -920,6 +1048,15 @@ function tarjeta(L){
     '<div class="card-actions">'+telLink+btnParte+'</div>'+
     '<div style="margin-top:6px">'+btnReagendar+'</div>'+
   '</div>';
+}
+
+// Número para el enlace tel: "34656..." sin + el móvil lo marca como nacional y
+// falla. Españoles de 9 cifras tal cual; con prefijo, siempre con +.
+function telHref(tel){
+  var d = String(tel||'').replace(/[^\d+]/g,'');
+  if(/^\d{9}$/.test(d)) return d;
+  d = d.replace(/^(\+|00)/,'').replace(/\D/g,'');
+  return '+'+d; // solo dígitos y +: no hace falta codificar
 }
 
 function escapeHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -1070,7 +1207,7 @@ function enviarParte(){
       var ents = (r && r.ok && r.entrenadores) ? r.entrenadores : [];
       var e = ents.filter(function(x){return x.id===idQ;})[0];
       if(e){ entrarComo(e); return; }
-      if(s && s.id){ SESSION = s; mostrarBandeja(); var c=_cacheLeer(); if(c && c.leads && c.leads.length){LEADS=c.leads;renderBandeja();} else cargarLeads(); }
+      if(s && s.id){ SESSION = s; mostrarBandeja(); var c=_cacheLeer(); if(c && c.leads && c.leads.length){LEADS=c.leads;renderBandeja();cargarLeads(true);} else cargarLeads(); }
       else { document.getElementById('vLogin').style.display='block'; cargarBotonesLogin(); }
     });
     return;
@@ -1082,6 +1219,7 @@ function enviarParte(){
     if(cache && cache.leads && cache.leads.length){
       LEADS = cache.leads;
       renderBandeja();
+      cargarLeads(true);
     } else {
       cargarLeads();
     }
