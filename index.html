@@ -766,6 +766,14 @@ function _filtrarPorBuscador(L, q){
       || (L.tel||'').replace(/\s/g,'').indexOf(qq.replace(/\s/g,''))>=0;
 }
 
+// Dentro de cada día: primero los que entraron más recientemente (más
+// probabilidad de contratar). Empate: nombre.
+function _porEntradaDesc(a, b){
+  var fa = (a.fecha_gestion||'').slice(0,10), fb = (b.fecha_gestion||'').slice(0,10);
+  if(fa !== fb) return fa < fb ? 1 : -1;
+  return (a.nombre||'').localeCompare(b.nombre||'');
+}
+
 function renderBandeja(){
   var b = document.getElementById('bandeja');
   var filtroBanner = document.getElementById('filtroActivo');
@@ -814,8 +822,12 @@ function renderBandeja(){
     else { if(!mapa[f]) mapa[f]=[]; mapa[f].push(L); }
   });
 
-  // Ordenar días. Atrasados primero (más antiguos arriba), luego hoy, luego futuro.
-  var dias = Object.keys(mapa).sort();
+  // Orden de días: HOY primero; luego atrasados del más reciente al más antiguo
+  // (ayer, anteayer…); al final los futuros, del más cercano al más lejano.
+  var todos = Object.keys(mapa);
+  var dias = todos.filter(function(d){return d===hoy;})
+    .concat(todos.filter(function(d){return d<hoy;}).sort().reverse())
+    .concat(todos.filter(function(d){return d>hoy;}).sort());
 
   var h = '';
   var vacio = !dias.length && !sinFecha.length && !hechos.length;
@@ -834,15 +846,14 @@ function renderBandeja(){
 
   dias.forEach(function(iso){
     var arr = mapa[iso];
-    // Ordenar dentro del día por hora si algún lead trajera hora (no la tenemos, dejamos por nombre)
-    arr.sort(function(a,bb){ return (a.nombre||'').localeCompare(bb.nombre||''); });
+    arr.sort(_porEntradaDesc);
     h += _cabeceraDia(iso, hoy, arr.length);
     arr.forEach(function(L){ h += tarjeta(L); });
   });
 
   if(sinFecha.length){
     h += '<div class="dia-head sin"><span class="weekday">SIN FECHA</span><span class="num-leads">'+sinFecha.length+' lead'+(sinFecha.length!==1?'s':'')+'</span></div>';
-    sinFecha.sort(function(a,bb){ return (a.nombre||'').localeCompare(bb.nombre||''); });
+    sinFecha.sort(_porEntradaDesc);
     sinFecha.forEach(function(L){ h += tarjeta(L); });
   }
 
