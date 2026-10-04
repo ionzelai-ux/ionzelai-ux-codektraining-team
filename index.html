@@ -464,8 +464,6 @@ function entrarComo(ent){
 }
 
 function hacerLogout(msg){
-  // Borrar también la caché de leads (teléfonos) de este dispositivo
-  if(SESSION){ try{ localStorage.removeItem(_LEADS_CACHE_KEY+'_'+SESSION.id); }catch(e){} }
   clearSession();
   SESSION = null;
   LEADS = [];
@@ -1255,8 +1253,9 @@ function enviarParte(){
   // ?entrenador=t2 ya no entra solo: solo deja elegido a ese entrenador y pide su clave
   var m = location.search.match(/[?&]entrenador=([^&]+)/);
   if(m) LOGIN_PRESEL = decodeURIComponent(m[1]);
-  // Sesiones antiguas sin clave: fuera (y su caché también)
-  if(s && s.id && !s.pin){ try{ localStorage.removeItem(_LEADS_CACHE_KEY+'_'+s.id); }catch(e){} clearSession(); s = null; }
+  // Sesiones antiguas sin clave: se pide la clave. No se borra nada: la copia
+  // de la lista se queda en el móvil y los datos siguen en la hoja de Google.
+  if(s && s.id && !s.pin){ clearSession(); s = null; }
   if(s && s.id && m && LOGIN_PRESEL !== s.id){ s = null; }
   if(s && s.id){
     SESSION = s;
