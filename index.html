@@ -1205,10 +1205,13 @@ document.addEventListener('change', function(e){
   }
 });
 
+var PARTE_ENVIANDO = false; // evita mandar el mismo parte dos veces por doble toque
 function enviarParte(){
   var err = document.getElementById('parteErr'); err.textContent='';
+  if(PARTE_ENVIANDO) return;
   if(!PARTE_ACTUAL.resultado){err.textContent='Marca primero qué pasó al llamar.';return;}
   var btn = document.getElementById('parteEnviar');
+  PARTE_ENVIANDO = true;
   btn.disabled=true;btn.textContent='Enviando…';
 
   var proxFecha = document.getElementById('pProxFecha').value;
@@ -1236,14 +1239,20 @@ function enviarParte(){
     texto_wa: textoWa
   };
 
+  var idAsigEnviada = PARTE_ACTUAL.id_asignacion;
   jsonp(params, function(r){
+    PARTE_ENVIANDO = false;
     btn.disabled=false;btn.textContent='Enviar parte a Jon';
     if(r && r.ok){
+      // Marcar ya la tarjeta como "parte enviado" para que no se pueda repetir
+      LEADS.forEach(function(L){ if(L.id_asignacion===idAsigEnviada){ L.con_parte=true; L.parte_estado='pendiente'; } });
+      _cacheGuardar(); renderBandeja();
       document.getElementById('modalParteBody').innerHTML =
         '<div class="ok-msg"><div class="check">✓</div><h3>Parte enviado</h3><p>Jon lo revisará y actualizará la ficha del lead. Gracias.</p></div>'+
         '<button class="btn-enviar" onclick="cerrarParte();cargarLeads(true)">Cerrar</button>';
     } else {
-      err.textContent = (r && r.error) ? ('Error: '+r.error) : 'No se ha podido enviar. Inténtalo de nuevo.';
+      if(r && (r.error==='timeout' || r.error==='red')) err.textContent = 'El servidor tarda en responder. Puede que se haya enviado: cierra, pulsa ↻ Actualizar y comprueba antes de repetirlo.';
+      else err.textContent = (r && r.error) ? ('Error: '+r.error) : 'No se ha podido enviar. Inténtalo de nuevo.';
     }
   });
 }
