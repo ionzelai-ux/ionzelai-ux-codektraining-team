@@ -379,6 +379,14 @@ function jsonp(params, cb){
     if(script.parentNode)script.parentNode.removeChild(script);
     cb(resp);
   };
+  // La clave va en todas las acciones del entrenador. Si el servidor la rechaza
+  // (cambió o no hay), se cierra la sesión y se vuelve a pedir.
+  if(SESSION && SESSION.pin && params.action!=='entrenadores' && params.action!=='login_team') params.pin = SESSION.pin;
+  var cbOrig = cb;
+  cb = function(resp){
+    if(resp && resp.error==='pin' && SESSION){ hacerLogout('Tu clave no es válida o ha cambiado. Vuelve a entrar.'); return; }
+    cbOrig(resp);
+  };
   var url = SYNC_URL+'?token='+encodeURIComponent(TOKEN);
   Object.keys(params).forEach(function(k){
     url += '&'+k+'='+encodeURIComponent(params[k]);
@@ -406,13 +414,41 @@ function cargarBotonesLogin(){
       var b = document.createElement('button');
       b.type='button';
       b.textContent = 'Soy ' + e.nombre;
-      b.onclick = function(){ entrarComo(e); };
+      b.onclick = function(){ pedirClave(e); };
       cont.appendChild(b);
     });
+    if(LOGIN_PRESEL){ var e0 = ents.filter(function(x){return x.id===LOGIN_PRESEL;})[0]; if(e0) pedirClave(e0); }
+  });
+}
+// Paso 2 del login: la clave de ese entrenador
+var LOGIN_ENT = null, LOGIN_PRESEL = null;
+function pedirClave(ent){
+  LOGIN_ENT = ent;
+  var cont = document.getElementById('loginBtns');
+  cont.innerHTML =
+    '<div style="font-size:15px;color:#fff;font-weight:700">Hola, '+escapeHtml(ent.nombre)+'</div>'+
+    '<input type="text" id="loginPin" placeholder="Tu clave" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" style="letter-spacing:1px" onkeydown="if(event.key===\'Enter\')entrarConClave()">'+
+    '<button type="button" id="loginBtnOk" onclick="entrarConClave()">Entrar</button>'+
+    '<button type="button" onclick="cargarBotonesLogin()" style="background:none;border:1px solid #2a2a2a;color:#999">← No soy '+escapeHtml(ent.nombre)+'</button>';
+  document.getElementById('loginErr').textContent = '';
+  setTimeout(function(){ var i=document.getElementById('loginPin'); if(i) i.focus(); }, 50);
+}
+function entrarConClave(){
+  var inp = document.getElementById('loginPin'), btn = document.getElementById('loginBtnOk');
+  var pin = (inp && inp.value || '').trim();
+  var err = document.getElementById('loginErr');
+  if(!pin){ err.textContent = 'Escribe tu clave.'; return; }
+  btn.disabled = true; btn.textContent = 'Comprobando…'; err.textContent = '';
+  jsonp({action:'login_team', id_entrenador:LOGIN_ENT.id, pin:pin}, function(r){
+    btn.disabled = false; btn.textContent = 'Entrar';
+    if(r && r.ok && r.entrenador){ entrarComo({id:r.entrenador.id, nombre:r.entrenador.nombre, pin:pin}); }
+    else if(r && (r.error==='timeout' || r.error==='red')){ err.textContent = 'No hay conexión o el servidor tarda. Inténtalo otra vez.'; }
+    else if(r && r.error==='pin no valido'){ err.textContent = 'Clave incorrecta.'; if(inp){ inp.select(); } }
+    else { err.textContent = 'No se ha podido entrar: '+((r&&r.error)||'error')+'. Inténtalo otra vez.'; }
   });
 }
 function entrarComo(ent){
-  SESSION = {id:ent.id, nombre:ent.nombre};
+  SESSION = {id:ent.id, nombre:ent.nombre, pin:ent.pin};
   saveSession(SESSION);
   mostrarBandeja();
   // Pinta caché al instante y refresca por debajo (si no, las asignaciones
@@ -427,7 +463,9 @@ function entrarComo(ent){
   }
 }
 
-function hacerLogout(){
+function hacerLogout(msg){
+  // Borrar también la caché de leads (teléfonos) de este dispositivo
+  if(SESSION){ try{ localStorage.removeItem(_LEADS_CACHE_KEY+'_'+SESSION.id); }catch(e){} }
   clearSession();
   SESSION = null;
   LEADS = [];
@@ -435,6 +473,7 @@ function hacerLogout(){
   document.getElementById('hdr').style.display='none';
   document.getElementById('vLogin').style.display='block';
   cargarBotonesLogin();
+  document.getElementById('loginErr').textContent = (typeof msg==='string') ? msg : '';
 }
 
 function mostrarBandeja(){
@@ -1213,18 +1252,12 @@ function enviarParte(){
 
 (function init(){
   var s = loadSession();
+  // ?entrenador=t2 ya no entra solo: solo deja elegido a ese entrenador y pide su clave
   var m = location.search.match(/[?&]entrenador=([^&]+)/);
-  if(m){
-    var idQ = decodeURIComponent(m[1]);
-    jsonp({action:'entrenadores'}, function(r){
-      var ents = (r && r.ok && r.entrenadores) ? r.entrenadores : [];
-      var e = ents.filter(function(x){return x.id===idQ;})[0];
-      if(e){ entrarComo(e); return; }
-      if(s && s.id){ SESSION = s; mostrarBandeja(); var c=_cacheLeer(); if(c && c.leads && c.leads.length){LEADS=c.leads;renderBandeja();cargarLeads(true);} else cargarLeads(); }
-      else { document.getElementById('vLogin').style.display='block'; cargarBotonesLogin(); }
-    });
-    return;
-  }
+  if(m) LOGIN_PRESEL = decodeURIComponent(m[1]);
+  // Sesiones antiguas sin clave: fuera (y su caché también)
+  if(s && s.id && !s.pin){ try{ localStorage.removeItem(_LEADS_CACHE_KEY+'_'+s.id); }catch(e){} clearSession(); s = null; }
+  if(s && s.id && m && LOGIN_PRESEL !== s.id){ s = null; }
   if(s && s.id){
     SESSION = s;
     mostrarBandeja();
