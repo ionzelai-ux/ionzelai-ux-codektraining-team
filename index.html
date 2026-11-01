@@ -387,6 +387,7 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
     <input type="time" id="reagHora" step="300" onchange="if(this.value)setReagFranja(this.value<'15:00'?'manana':'tarde',true)">
     <label>Nota corta (opcional)</label>
     <input type="text" id="reagNota" placeholder="Ej: llamar a las 15h, dijo que a esa hora sí puede">
+    <label class="toggle"><input type="checkbox" id="reagSinLlamar"> No he llegado a llamar, solo lo muevo (no cuenta como llamada)</label>
     <div class="err" id="reagErr"></div>
     <button class="btn-enviar" onclick="confirmarReagendar()" style="margin-top:14px">Confirmar reagendado</button>
   </div>
@@ -585,6 +586,7 @@ function abrirReagendar(idAsig){
   document.getElementById('reagHora').value = '';
   setReagFranja('');
   document.getElementById('reagNota').value = '';
+  document.getElementById('reagSinLlamar').checked = false;
   document.getElementById('reagErr').textContent = '';
   document.getElementById('modalReagendar').classList.add('open');
 }
@@ -626,8 +628,14 @@ function confirmarReagendar(){
   cerrarReagendar();
   renderBandeja();
   // Sync al backend en segundo plano
-  jsonp({action:'reagendar_asignacion', id_asignacion:idAsig, id_entrenador:SESSION.id, fecha_llamada:fecha, franja:franja, hora:hora, nota_extra:nota}, function(r){
-    if(!(r && r.ok)) alert('Aviso: no se pudo confirmar en el servidor: '+((r&&r.error)||'error desconocido'));
+  // Reagendar después de hablar con él cuenta como llamada hecha
+  var llamada = document.getElementById('reagSinLlamar').checked ? '0' : '1';
+  jsonp({action:'reagendar_asignacion', id_asignacion:idAsig, id_entrenador:SESSION.id, fecha_llamada:fecha, franja:franja, hora:hora, nota_extra:nota, llamada:llamada}, function(r){
+    if(!(r && r.ok)){ alert('Aviso: no se pudo confirmar en el servidor: '+((r&&r.error)||'error desconocido')); return; }
+    if(r.historial){
+      LEADS.forEach(function(L){ if(L.id_asignacion===idAsig) L.historial = r.historial; });
+      _cacheGuardar(); renderBandeja();
+    }
   });
 }
 
@@ -668,7 +676,7 @@ function parteNoCogio(){
   if(btn) elegirResultado('no_cogio', btn);
   var ints = (L && L.intentos) || [];
   var nota = document.getElementById('pNota');
-  if(nota && ints.length) nota.value = (ints.length+1)+' intentos sin respuesta: '+ints.map(_fmtIntento).join(', ')+' y ahora.';
+  if(nota && ints.length) nota.value = 'Tampoco ha cogido en el 2.º intento.';
 }
 function reintentarLlamada(){
   if(!_NOC_ID || !SESSION) return;
@@ -680,7 +688,7 @@ function reintentarLlamada(){
     // Un servidor sin esta función contesta con la lista general: no darlo por bueno
     if(r && r.ok && typeof r.franja !== 'undefined'){
       LEADS.forEach(function(L){
-        if(L.id_asignacion===idAsig){ L.fecha_llamada = r.fecha_llamada; L.franja = r.franja; L.hora = ''; L.intentos = r.intentos || []; }
+        if(L.id_asignacion===idAsig){ L.fecha_llamada = r.fecha_llamada; L.franja = r.franja; L.hora = ''; L.intentos = r.intentos || []; if(r.historial) L.historial = r.historial; }
       });
       _cacheGuardar(); cerrarNoCogio(); renderBandeja();
       toast(r.franja==='tarde' ? '🔁 Pasado a esta tarde' : '🔁 Pasado a mañana por la mañana');
@@ -1171,7 +1179,8 @@ function tarjeta(L){
 
   // ---- Métricas clave ----
   var metricas = '<div class="card-metrics">';
-  var llam = (typeof L.llamadas_hechas==='number'?L.llamadas_hechas:0);
+  // Llamadas que ha hecho el entrenador a este lead en esta asignación
+  var llam = _historialDe(L).length;
   var llamCol = llam>=2?'#ff8a8a':(llam>=1?'#FAC775':'#888');
   metricas += '<div class="metric"><span class="metric-lbl">Llamadas hechas</span><span class="metric-val" style="color:'+llamCol+'">'+llam+'</span></div>';
   if(L.fecha_gestion){
@@ -1209,6 +1218,8 @@ function tarjeta(L){
   var notaJon = L.nota_jon ? '<div class="nota-jon"><b>📌 Nota de Jon (asignación)</b>'+escapeHtml(L.nota_jon)+'</div>' : '';
   var notaRech = (L.parte_estado==='rechazado' && L.parte_rechazo) ? '<div class="nota-rech"><b>Motivo del rechazo</b>'+escapeHtml(L.parte_rechazo)+'</div>' : '';
   var historial = L.nota_lead ? '<div class="historial-lead"><b>📜 Historial del lead</b><div class="hist-body">'+escapeHtml(L.nota_lead)+'</div></div>' : '';
+  var hLlam = _historialDe(L);
+  var llamadasPrevias = hLlam.length ? '<div class="bloque-msg"><b>📞 Tus llamadas a este lead</b>'+hLlam.map(function(x){ return escapeHtml(_fmtIntento(x.fecha))+' · '+escapeHtml(x.txt); }).join('<br>')+'</div>' : '';
 
   // ---- Acciones ----
   var telLink = L.tel ? '<a class="btn-call" href="tel:'+telHref(L.tel)+'">📞 Llamar</a>' : '<button class="btn-call" disabled style="opacity:.4">Sin tel.</button>';
@@ -1236,7 +1247,7 @@ function tarjeta(L){
         '<div class="card-tags">'+tags+'</div>'+
       '</div>'+
     '</div>'+
-    metricas + contacto + proximo + notaJon + notaRech + historial +
+    metricas + contacto + proximo + llamadasPrevias + notaJon + notaRech + historial +
     '<div class="card-actions">'+telLink+btnParte+'</div>'+
     (btnNoCogio ? '<div class="card-actions2">'+btnNoCogio+btnReagendar+'</div>' : '<div style="margin-top:6px">'+btnReagendar+'</div>')+
   '</div>';
@@ -1348,11 +1359,18 @@ document.addEventListener('change', function(e){
   }
 });
 
-// Si hubo intentos sin respuesta antes, que Jon lo vea siempre en el parte
+// Llamadas previas de esta asignación (no cogió / reagendó tras hablar).
+// Con un servidor antiguo solo hay "intentos" (no cogió).
+function _historialDe(L){
+  if(L && Array.isArray(L.historial)) return L.historial;
+  return ((L && L.intentos) || []).map(function(f){ return {fecha:f, tipo:'nocogio', txt:'no cogió'}; });
+}
+function _historialTxt(h){ return h.map(function(x){ return _fmtIntento(x.fecha)+' '+x.txt; }).join(' · '); }
+// Que Jon vea siempre en el parte las llamadas anteriores
 function _notaConIntentos(nota, L){
-  var ints = (L && L.intentos) || [];
-  if(!ints.length || /sin respuesta/i.test(nota)) return nota;
-  return (nota ? nota+' · ' : '') + '(Antes: '+ints.length+' intento sin respuesta a las '+ints.map(_fmtIntento).join(', ')+')';
+  var h = _historialDe(L);
+  if(!h.length || /Antes:/.test(nota)) return nota;
+  return (nota ? nota+' · ' : '') + '(Antes: '+_historialTxt(h)+')';
 }
 var PARTE_ENVIANDO = false; // evita mandar el mismo parte dos veces por doble toque
 function enviarParte(){
