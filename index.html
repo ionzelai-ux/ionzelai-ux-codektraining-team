@@ -231,6 +231,17 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .btn-coger:disabled{opacity:.45;cursor:default}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1B7A3D;color:#fff;font-size:14px;font-weight:700;padding:11px 18px;border-radius:10px;z-index:200;box-shadow:0 6px 20px rgba(0,0,0,.5)}
 .toast.err{background:#A32D2D}
+/* ---- FRANJAS / NO COGIÓ ---- */
+.franja-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.5px;margin:12px 0 8px 4px;color:#bbb}
+.franja-head span{font-size:10px;background:#2a2a2a;color:#ccc;padding:2px 8px;border-radius:8px}
+.franja-head.manana{color:#FAC775}
+.franja-head.tarde{color:#AFA9EC}
+.tag.intento{background:#2a1a08;color:#FAC775;border:1px solid #BA7517}
+.fecha-llamada-chip.hora{background:#1d1530;color:#fff;border-color:#8B7BE8;font-size:12px}
+.card-actions2{margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn-nocogio{background:#2a1010;border:1.5px solid #A32D2D;color:#ff9a9a;font-size:13px;font-weight:700;padding:9px;border-radius:8px;cursor:pointer;font-family:inherit}
+.btn-nocogio:hover{background:#3a1010;color:#fff}
+.re-quick button.on{background:#BA7517;color:#fff}
 
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid #333;border-top-color:#B23A3A;border-radius:50%;animation:sp 0.7s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -337,12 +348,28 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 </div>
 
 <!-- MODAL REAGENDAR -->
+<!-- MODAL NO COGIÓ -->
+<div class="modal-ov" id="modalNoCogio">
+  <div class="modal" style="max-width:400px">
+    <button class="modal-close" onclick="cerrarNoCogio()">×</button>
+    <div id="noCogioBody"></div>
+  </div>
+</div>
+
 <div class="modal-ov" id="modalReagendar">
   <div class="modal" style="max-width:400px">
     <button class="modal-close" onclick="cerrarReagendar()">×</button>
     <h3>📅 Reagendar llamada</h3>
     <p class="sub-modal" id="reagSub"></p>
-    <label>Nueva fecha para llamar</label>
+    <label>Rápido</label>
+    <div class="re-quick">
+      <button type="button" onclick="reagFranjaRapida(0,'tarde')">🌙 Esta tarde</button>
+      <button type="button" onclick="reagFranjaRapida(1,'manana')">☀️ Mañana por la mañana</button>
+      <button type="button" onclick="reagFranjaRapida(1,'tarde')">🌙 Mañana por la tarde</button>
+      <button type="button" onclick="reagEnMin(10)">⏰ En 10 min</button>
+      <button type="button" onclick="reagEnMin(60)">⏰ En 1 hora</button>
+    </div>
+    <label>Día</label>
     <input type="date" id="reagFecha">
     <div class="re-quick">
       <button type="button" onclick="reagRapida(1)">Mañana</button>
@@ -350,6 +377,14 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
       <button type="button" onclick="reagRapida(3)">En 3 días</button>
       <button type="button" onclick="reagRapida(7)">En 1 semana</button>
     </div>
+    <label>Franja</label>
+    <div class="re-quick" id="reagFranjas">
+      <button type="button" data-fr="" onclick="setReagFranja('')">📌 Cuando puedas</button>
+      <button type="button" data-fr="manana" onclick="setReagFranja('manana')">☀️ Mañana (hasta 15:00)</button>
+      <button type="button" data-fr="tarde" onclick="setReagFranja('tarde')">🌙 Tarde (desde 15:00)</button>
+    </div>
+    <label>Hora concreta (opcional, p. ej. "llámame a las 5")</label>
+    <input type="time" id="reagHora" step="300" onchange="if(this.value)setReagFranja(this.value<'15:00'?'manana':'tarde',true)">
     <label>Nota corta (opcional)</label>
     <input type="text" id="reagNota" placeholder="Ej: llamar a las 15h, dijo que a esa hora sí puede">
     <div class="err" id="reagErr"></div>
@@ -545,8 +580,10 @@ function abrirReagendar(idAsig){
   if(!L) return;
   _REAG_ID = idAsig;
   document.getElementById('reagSub').textContent = (L.nombre||L.tel||'lead');
-  // Fecha por defecto: mañana
+  // Fecha por defecto: mañana, sin franja ni hora
   document.getElementById('reagFecha').value = _sumarDiasISO(_hoyISOTeam(), 1);
+  document.getElementById('reagHora').value = '';
+  setReagFranja('');
   document.getElementById('reagNota').value = '';
   document.getElementById('reagErr').textContent = '';
   document.getElementById('modalReagendar').classList.add('open');
@@ -555,9 +592,27 @@ function cerrarReagendar(){ document.getElementById('modalReagendar').classList.
 function reagRapida(dias){
   document.getElementById('reagFecha').value = _sumarDiasISO(_hoyISOTeam(), dias);
 }
+// Franja elegida en el modal ('' = cuando puedas, 'manana', 'tarde')
+var _REAG_FRANJA = '';
+function setReagFranja(fr, desdeHora){
+  _REAG_FRANJA = fr;
+  if(!desdeHora) document.getElementById('reagHora').value = '';
+  Array.prototype.forEach.call(document.querySelectorAll('#reagFranjas button'), function(b){ b.classList.toggle('on', b.dataset.fr===fr); });
+}
+function reagFranjaRapida(dias, fr){ reagRapida(dias); setReagFranja(fr); }
+function reagEnMin(min){
+  var d = new Date(Date.now() + min*60000);
+  var iso = d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+  var hh = ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+  document.getElementById('reagFecha').value = iso;
+  document.getElementById('reagHora').value = hh;
+  setReagFranja(hh<'15:00'?'manana':'tarde', true);
+}
 function confirmarReagendar(){
   if(!_REAG_ID || !SESSION) return;
   var fecha = document.getElementById('reagFecha').value;
+  var hora = document.getElementById('reagHora').value || '';
+  var franja = hora ? (hora<'15:00'?'manana':'tarde') : _REAG_FRANJA;
   var nota = document.getElementById('reagNota').value.trim();
   var err = document.getElementById('reagErr');
   if(!fecha){ err.textContent='Elige una fecha.'; return; }
@@ -565,14 +620,77 @@ function confirmarReagendar(){
   // Actualización local inmediata
   var idAsig = _REAG_ID;
   LEADS.forEach(function(L){
-    if(L.id_asignacion === idAsig){ L.fecha_llamada = fecha; }
+    if(L.id_asignacion === idAsig){ L.fecha_llamada = fecha; L.franja = franja; L.hora = hora; }
   });
   _cacheGuardar();
   cerrarReagendar();
   renderBandeja();
   // Sync al backend en segundo plano
-  jsonp({action:'reagendar_asignacion', id_asignacion:idAsig, id_entrenador:SESSION.id, fecha_llamada:fecha, nota_extra:nota}, function(r){
+  jsonp({action:'reagendar_asignacion', id_asignacion:idAsig, id_entrenador:SESSION.id, fecha_llamada:fecha, franja:franja, hora:hora, nota_extra:nota}, function(r){
     if(!(r && r.ok)) alert('Aviso: no se pudo confirmar en el servidor: '+((r&&r.error)||'error desconocido'));
+  });
+}
+
+// ==================== NO COGIÓ (un reintento) ====================
+// 1.ª vez: reintentar (pasa a la otra franja) o dar por no cogido (parte).
+// 2.ª vez: ya solo parte de "no cogió" a Jon, con los dos intentos anotados.
+var _NOC_ID = null;
+function _fmtIntento(s){ // "2026-11-01 12:05" -> "12:05 (01/11)"
+  var m = String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2})/);
+  return m ? m[4]+' ('+m[3]+'/'+m[2]+')' : String(s||'');
+}
+function abrirNoCogio(idAsig){
+  var L = LEADS.filter(function(x){return x.id_asignacion===idAsig;})[0];
+  if(!L) return;
+  _NOC_ID = idAsig;
+  var intentos = L.intentos || [];
+  var nombre = escapeHtml(L.nombre||L.tel||'este lead');
+  var h;
+  if(!intentos.length){
+    var tarde = new Date().getHours() < 15;
+    h = '<h3>❌ No ha cogido</h3><p class="sub-modal">'+nombre+'</p>'+
+      '<button class="btn-enviar" style="background:#1a1a08;border:1.5px solid #BA7517;color:#FAC775;margin-top:6px" onclick="reintentarLlamada()">🔁 Reintentar más tarde<br><span style="font-size:12px;font-weight:600">Pasa a '+(tarde?'esta tarde':'mañana por la mañana')+' con la marca de 1 intento</span></button>'+
+      '<button class="btn-enviar" style="margin-top:10px" onclick="parteNoCogio()">📝 Dar por no cogido<br><span style="font-size:12px;font-weight:600">Se envía el parte a Jon</span></button>';
+  } else {
+    h = '<h3>❌ Segundo intento sin respuesta</h3><p class="sub-modal">'+nombre+'</p>'+
+      '<p style="font-size:13px;color:#bbb;margin:8px 0 4px">Ya lo intentaste a las '+escapeHtml(_fmtIntento(intentos[0]))+'. Ahora toca enviar el parte de "no cogió" a Jon.</p>'+
+      '<button class="btn-enviar" onclick="parteNoCogio()">📝 Enviar parte de no cogido</button>';
+  }
+  document.getElementById('noCogioBody').innerHTML = h + '<div class="err" id="nocErr"></div>';
+  document.getElementById('modalNoCogio').classList.add('open');
+}
+function cerrarNoCogio(){ document.getElementById('modalNoCogio').classList.remove('open'); _NOC_ID = null; }
+function parteNoCogio(){
+  var idAsig = _NOC_ID; cerrarNoCogio();
+  var L = LEADS.filter(function(x){return x.id_asignacion===idAsig;})[0];
+  abrirParte(idAsig);
+  var btn = document.querySelectorAll('#modalParteBody .res-btn')[1];
+  if(btn) elegirResultado('no_cogio', btn);
+  var ints = (L && L.intentos) || [];
+  var nota = document.getElementById('pNota');
+  if(nota && ints.length) nota.value = (ints.length+1)+' intentos sin respuesta: '+ints.map(_fmtIntento).join(', ')+' y ahora.';
+}
+function reintentarLlamada(){
+  if(!_NOC_ID || !SESSION) return;
+  var idAsig = _NOC_ID;
+  var err = document.getElementById('nocErr');
+  Array.prototype.forEach.call(document.querySelectorAll('#noCogioBody button'), function(b){ b.disabled = true; });
+  jsonp({action:'reintentar_asignacion', id_asignacion:idAsig, id_entrenador:SESSION.id}, function(r){
+    Array.prototype.forEach.call(document.querySelectorAll('#noCogioBody button'), function(b){ b.disabled = false; });
+    // Un servidor sin esta función contesta con la lista general: no darlo por bueno
+    if(r && r.ok && typeof r.franja !== 'undefined'){
+      LEADS.forEach(function(L){
+        if(L.id_asignacion===idAsig){ L.fecha_llamada = r.fecha_llamada; L.franja = r.franja; L.hora = ''; L.intentos = r.intentos || []; }
+      });
+      _cacheGuardar(); cerrarNoCogio(); renderBandeja();
+      toast(r.franja==='tarde' ? '🔁 Pasado a esta tarde' : '🔁 Pasado a mañana por la mañana');
+    } else if(r && r.error==='ya_reintentado'){
+      cerrarNoCogio(); toast('Ya tenía un reintento: envía el parte de no cogido', true); abrirNoCogio(idAsig);
+    } else if(r && r.ok){
+      err.textContent = 'Falta actualizar el servidor. Avisa a Jon.';
+    } else {
+      err.textContent = 'No se ha podido: '+((r&&r.error)||'error')+'. Inténtalo otra vez.';
+    }
   });
 }
 
@@ -811,6 +929,21 @@ function _porEntradaDesc(a, b){
   return (a.nombre||'').localeCompare(b.nombre||'');
 }
 
+var _BLOQUES_FRANJA = [{k:'', t:'📌 Cuando puedas'}, {k:'manana', t:'☀️ Mañana'}, {k:'tarde', t:'🌙 Tarde'}];
+function _franjaDe(L){
+  if(L.franja==='manana' || L.franja==='tarde') return L.franja;
+  if(L.hora) return L.hora < '15:00' ? 'manana' : 'tarde';
+  return '';
+}
+// Primero los que tienen hora concreta (por hora); luego por fecha de entrada
+function _porHoraYEntrada(a, b){
+  var ha = a.hora||'', hb = b.hora||'';
+  if(ha && !hb) return -1;
+  if(!ha && hb) return 1;
+  if(ha !== hb) return ha < hb ? -1 : 1;
+  return _porEntradaDesc(a, b);
+}
+
 function renderBandeja(){
   var b = document.getElementById('bandeja');
   var filtroBanner = document.getElementById('filtroActivo');
@@ -881,11 +1014,17 @@ function renderBandeja(){
     return;
   }
 
+  // Dentro de cada día: Cuando puedas / Mañana (hasta 15:00) / Tarde
   dias.forEach(function(iso){
     var arr = mapa[iso];
-    arr.sort(_porEntradaDesc);
     h += _cabeceraDia(iso, hoy, arr.length);
-    arr.forEach(function(L){ h += tarjeta(L); });
+    _BLOQUES_FRANJA.forEach(function(b){
+      var sub = arr.filter(function(L){ return _franjaDe(L)===b.k; });
+      if(!sub.length) return;
+      sub.sort(_porHoraYEntrada);
+      h += '<div class="franja-head '+(b.k||'libre')+'">'+b.t+'<span>'+sub.length+'</span></div>';
+      sub.forEach(function(L){ h += tarjeta(L); });
+    });
   });
 
   if(sinFecha.length){
@@ -1012,6 +1151,8 @@ function tarjeta(L){
   if(L.interes) tags += '<span class="tag interes">'+escapeHtml(L.interes)+'</span>';
   if(L.procedencia) tags += '<span class="tag proc">'+escapeHtml(L.procedencia)+'</span>';
   if(L.origen==='bolsa') tags += '<span class="tag bolsa">🎯 De la bolsa</span>';
+  if(L.intentos && L.intentos.length) tags += '<span class="tag intento">🔁 '+L.intentos.length+' intento sin respuesta · '+escapeHtml(_fmtIntento(L.intentos[L.intentos.length-1]))+'</span>';
+  if(L.hora) tags += '<span class="fecha-llamada-chip hora">⏰ '+escapeHtml(L.hora)+'</span>';
   if(L.con_parte && L.parte_estado==='pendiente') tags += '<span class="tag parte-ok">Parte enviado · Pendiente</span>';
   if(L.parte_estado==='rechazado') tags += '<span class="tag parte-rech">⚠ Rechazado · corrige</span>';
 
@@ -1083,6 +1224,8 @@ function tarjeta(L){
   var btnDescartar = '<button class="btn-descartar" title="Descartar este lead (quitarlo de tu bandeja)" onclick="descartarLead(\''+L.id_asignacion+'\',\''+escapeHtml((L.nombre||L.tel||'este lead').replace(/\'/g,''))+'\')">✕</button>';
 
   var btnReagendar = '<button class="btn-reagendar" onclick="abrirReagendar(\''+L.id_asignacion+'\')">📅 Reagendar</button>';
+  var parteYaEnviado = L.con_parte && L.parte_estado==='pendiente';
+  var btnNoCogio = parteYaEnviado ? '' : '<button class="btn-nocogio" onclick="abrirNoCogio(\''+L.id_asignacion+'\')">❌ No cogió</button>';
 
   return '<div class="'+clase+'">'+
     btnDescartar +
@@ -1095,7 +1238,7 @@ function tarjeta(L){
     '</div>'+
     metricas + contacto + proximo + notaJon + notaRech + historial +
     '<div class="card-actions">'+telLink+btnParte+'</div>'+
-    '<div style="margin-top:6px">'+btnReagendar+'</div>'+
+    (btnNoCogio ? '<div class="card-actions2">'+btnNoCogio+btnReagendar+'</div>' : '<div style="margin-top:6px">'+btnReagendar+'</div>')+
   '</div>';
 }
 
@@ -1205,6 +1348,12 @@ document.addEventListener('change', function(e){
   }
 });
 
+// Si hubo intentos sin respuesta antes, que Jon lo vea siempre en el parte
+function _notaConIntentos(nota, L){
+  var ints = (L && L.intentos) || [];
+  if(!ints.length || /sin respuesta/i.test(nota)) return nota;
+  return (nota ? nota+' · ' : '') + '(Antes: '+ints.length+' intento sin respuesta a las '+ints.map(_fmtIntento).join(', ')+')';
+}
 var PARTE_ENVIANDO = false; // evita mandar el mismo parte dos veces por doble toque
 function enviarParte(){
   var err = document.getElementById('parteErr'); err.textContent='';
@@ -1227,7 +1376,7 @@ function enviarParte(){
     id_entrenador: SESSION.id,
     pin: SESSION.pin || '',
     resultado: PARTE_ACTUAL.resultado,
-    nota_entrenador: document.getElementById('pNota').value.trim(),
+    nota_entrenador: _notaConIntentos(document.getElementById('pNota').value.trim(), PARTE_ACTUAL.lead),
     propuesta_estado: document.getElementById('pEstado').value,
     propuesta_prox_fecha: proxFecha,
     propuesta_prox_hora: proxHora,
