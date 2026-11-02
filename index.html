@@ -1226,6 +1226,9 @@ function _diasDesde(iso){
   return Math.round((aTs(fmt(new Date())) - aTs(fmt(d))) / 86400000);
 }
 
+// Horas que la hoja guardó como fecha ("Sat Dec 30 1899 19:04:00 GMT...") -> "19:04"
+function _hh(v){ var m = String(v||'').match(/(\d{2}):(\d{2}):\d{2} GMT/); return m ? m[1]+':'+m[2] : v; }
+
 function tarjeta(L){
   var clase = 'card';
   if(L.con_parte && L.parte_estado==='pendiente') clase += ' con-parte';
@@ -1283,11 +1286,11 @@ function tarjeta(L){
   var proximo = '';
   if(L.prox_fecha){
     var tipo = L.prox_tipo==='mensaje'?'💬 Mensaje':'📞 Llamada';
-    var hora = L.prox_hora ? (' · '+L.prox_hora) : (L.prox_franja==='tarde'?' · Tarde':' · Mañana');
+    var hora = L.prox_hora ? (' · '+_hh(L.prox_hora)) : (L.prox_franja==='tarde'?' · Tarde':' · Mañana');
     proximo = '<div class="bloque-prox"><b>📅 Próximo contacto agendado</b>'+tipo+' · '+_fmtFecha(L.prox_fecha)+hora+(L.prox_nota?' — '+escapeHtml(L.prox_nota):'')+'</div>';
   }
   if(L.fecha_visita){
-    var hv = L.hora_visita ? (' a las '+L.hora_visita+'h') : '';
+    var hv = L.hora_visita ? (' a las '+_hh(L.hora_visita)+'h') : '';
     proximo += '<div class="bloque-visita"><b>🏠 Visita reservada</b>'+_fmtFecha(L.fecha_visita)+hv+'</div>';
   }
   if(L.mensaje_enviado_en){
