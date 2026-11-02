@@ -96,6 +96,10 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .card{position:relative}
 .btn-descartar{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;border:1px solid #2a2a2a;background:#1a1a1a;color:#888;font-size:13px;line-height:1;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit;transition:background .12s,color .12s,border-color .12s;z-index:2}
 .btn-descartar:hover{background:#5a1010;color:#fff;border-color:#B23A3A}
+.btn-fav{position:absolute;top:10px;right:42px;width:26px;height:26px;border-radius:50%;border:1px solid #2a2a2a;background:#1a1a1a;color:#777;font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit;z-index:2}
+.btn-fav.on{color:#FFC83D;border-color:#BA7517;background:#2a2008}
+.card.fav{border-color:#6b5414}
+.card .card-name{padding-right:62px}
 .grupo-tit{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:22px 0 8px;padding:8px 12px;border-radius:8px;display:inline-block}
 .grupo-atr{background:#3a1010;color:#ff9090;border:1px solid #B23A3A}
 .grupo-hoy{background:#1a1a08;color:#FAC775;border:1px solid #BA7517}
@@ -301,6 +305,7 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
         <button class="clear-x" id="clearX" onclick="limpiarBuscador()" style="display:none">✕</button>
       </div>
       <button class="btn-cal" id="btnCal" onclick="abrirCalendarioFiltro()">📅 Filtrar día</button>
+      <button class="btn-cal" id="btnFav" onclick="toggleFiltroFav()">☆ Favoritos</button>
     </div>
     <div id="filtroActivo" style="display:none"></div>
     <div id="bandeja"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
@@ -554,6 +559,7 @@ function cargarLeads(silencioso){
       return;
     }
     LEADS = r.leads || [];
+    _favsReconciliar();
     _cacheGuardar();
     renderBandeja();
   });
@@ -952,6 +958,69 @@ function _porHoraYEntrada(a, b){
   return _porEntradaDesc(a, b);
 }
 
+// ==================== FAVORITOS (estrella) ====================
+// Se guarda al momento en el móvil y además en la hoja (Apps Script v13). Lo del
+// móvil manda hasta que la hoja confirma el mismo valor.
+var FILTRO_FAV = false;
+var _FAVS_KEY = 'codek_team_favs';
+function _favsLeer(){
+  if(!SESSION) return {};
+  try{ var v = localStorage.getItem(_FAVS_KEY+'_'+SESSION.id); return v ? JSON.parse(v) : {}; }catch(e){ return {}; }
+}
+function _favsGuardar(m){
+  if(!SESSION) return;
+  try{ localStorage.setItem(_FAVS_KEY+'_'+SESSION.id, JSON.stringify(m)); }catch(e){}
+}
+function esFav(L){
+  var m = _favsLeer();
+  if(m.hasOwnProperty(L.id_asignacion)) return !!m[L.id_asignacion];
+  return !!L.favorito;
+}
+function _favPrimero(cmp){
+  return function(a, b){
+    var fa = esFav(a), fb = esFav(b);
+    if(fa !== fb) return fa ? -1 : 1;
+    return cmp(a, b);
+  };
+}
+function toggleFav(idAsig){
+  var L = LEADS.filter(function(x){return x.id_asignacion===idAsig;})[0];
+  if(!L || !SESSION) return;
+  var nuevo = !esFav(L);
+  var m = _favsLeer(); m[idAsig] = nuevo; _favsGuardar(m);
+  renderBandeja();
+  jsonp({action:'marcar_favorito', id_asignacion:idAsig, id_entrenador:SESSION.id, fav:nuevo?'1':'0'}, function(r){
+    // Solo si la hoja ya sabe de favoritos (v13) se fía de ella
+    if(r && r.ok && typeof r.favorito !== 'undefined'){
+      L.favorito = !!r.favorito;
+      _cacheGuardar();
+      var m2 = _favsLeer();
+      if(m2[idAsig] === L.favorito){ delete m2[idAsig]; _favsGuardar(m2); }
+    }
+  });
+}
+// Tras cargar de la hoja: lo que ya coincide no hace falta guardarlo aparte
+function _favsReconciliar(){
+  var m = _favsLeer(), cambia = false;
+  LEADS.forEach(function(L){
+    if(typeof L.favorito !== 'undefined' && m.hasOwnProperty(L.id_asignacion) && !!m[L.id_asignacion] === !!L.favorito){
+      delete m[L.id_asignacion]; cambia = true;
+    }
+  });
+  if(cambia) _favsGuardar(m);
+}
+function toggleFiltroFav(){
+  FILTRO_FAV = !FILTRO_FAV;
+  renderBandeja();
+}
+function _pintarBtnFav(){
+  var btn = document.getElementById('btnFav');
+  if(!btn) return;
+  var n = LEADS.filter(esFav).length;
+  btn.textContent = (FILTRO_FAV ? '★ Favoritos' : '☆ Favoritos') + (n ? ' ('+n+')' : '');
+  btn.classList.toggle('on', FILTRO_FAV);
+}
+
 function renderBandeja(){
   var b = document.getElementById('bandeja');
   var filtroBanner = document.getElementById('filtroActivo');
@@ -973,6 +1042,12 @@ function renderBandeja(){
     .filter(function(L){return _filtrarPorBuscador(L, q);});
 
   var hoy = _hoyISOTeam();
+
+  _pintarBtnFav();
+  if(FILTRO_FAV){
+    pendientes = pendientes.filter(esFav);
+    hechos = hechos.filter(esFav);
+  }
 
   // Aplicar filtro por día si está activo
   if(FILTRO_DIA){
@@ -1010,7 +1085,9 @@ function renderBandeja(){
   var h = '';
   var vacio = !dias.length && !sinFecha.length && !hechos.length;
   if(vacio){
-    if(q || FILTRO_DIA){
+    if(FILTRO_FAV && !q && !FILTRO_DIA){
+      h = '<div class="empty"><b>Aún no tienes favoritos</b>Pulsa la ☆ de una tarjeta para marcarla y verla aquí.</div>';
+    } else if(q || FILTRO_DIA || FILTRO_FAV){
       h = '<div class="empty"><b>Nada coincide con el filtro</b>'+
           (q?'Prueba con otro texto en el buscador.':'')+
           (FILTRO_DIA?'<br>No tienes leads asignados a ese día.':'')+
@@ -1029,7 +1106,7 @@ function renderBandeja(){
     _BLOQUES_FRANJA.forEach(function(b){
       var sub = arr.filter(function(L){ return _franjaDe(L)===b.k; });
       if(!sub.length) return;
-      sub.sort(_porHoraYEntrada);
+      sub.sort(_favPrimero(_porHoraYEntrada));
       h += '<div class="franja-head '+(b.k||'libre')+'">'+b.t+'<span>'+sub.length+'</span></div>';
       sub.forEach(function(L){ h += tarjeta(L); });
     });
@@ -1037,12 +1114,13 @@ function renderBandeja(){
 
   if(sinFecha.length){
     h += '<div class="dia-head sin"><span class="weekday">SIN FECHA</span><span class="num-leads">'+sinFecha.length+' lead'+(sinFecha.length!==1?'s':'')+'</span></div>';
-    sinFecha.sort(_porEntradaDesc);
+    sinFecha.sort(_favPrimero(_porEntradaDesc));
     sinFecha.forEach(function(L){ h += tarjeta(L); });
   }
 
   if(hechos.length){
     h += '<div class="dia-head parte"><span class="weekday">✓ CON PARTE ENVIADO</span><span class="num-leads">'+hechos.length+'</span></div>';
+    hechos.sort(_favPrimero(function(){ return 0; }));
     hechos.forEach(function(L){ h += tarjeta(L); });
   }
   b.innerHTML = h;
@@ -1152,6 +1230,8 @@ function tarjeta(L){
   var clase = 'card';
   if(L.con_parte && L.parte_estado==='pendiente') clase += ' con-parte';
   if(L.parte_estado==='rechazado') clase += ' rechazado';
+  var fav = esFav(L);
+  if(fav) clase += ' fav';
 
   // ---- Tags superiores (estado + procedencia + interés + estado del parte) ----
   var tags = '';
@@ -1238,8 +1318,10 @@ function tarjeta(L){
   var parteYaEnviado = L.con_parte && L.parte_estado==='pendiente';
   var btnNoCogio = parteYaEnviado ? '' : '<button class="btn-nocogio" onclick="abrirNoCogio(\''+L.id_asignacion+'\')">❌ No cogió</button>';
 
+  var btnFav = '<button class="btn-fav'+(fav?' on':'')+'" title="'+(fav?'Quitar de favoritos':'Marcar como favorito')+'" onclick="toggleFav(\''+L.id_asignacion+'\')">'+(fav?'★':'☆')+'</button>';
+
   return '<div class="'+clase+'">'+
-    btnDescartar +
+    btnFav + btnDescartar +
     '<div class="card-top">'+
       '<div class="av">'+iniciales(L.nombre||L.tel)+'</div>'+
       '<div class="card-info">'+
