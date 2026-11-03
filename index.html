@@ -1229,6 +1229,16 @@ function _diasDesde(iso){
 // Horas que la hoja guardó como fecha ("Sat Dec 30 1899 19:04:00 GMT...") -> "19:04"
 function _hh(v){ var m = String(v||'').match(/(\d{2}):(\d{2}):\d{2} GMT/); return m ? m[1]+':'+m[2] : v; }
 
+// La hora de visita (step="900") se redondea al cuarto de hora más cercano (11:07 -> 11:00)
+document.addEventListener('change', function(e){
+  var t = e.target;
+  if(!t || t.type !== 'time' || t.getAttribute('step') !== '900' || !/^\d{2}:\d{2}/.test(t.value)) return;
+  var p = t.value.split(':'), min = Math.round((+p[0]*60 + +p[1])/15)*15;
+  if(min >= 1440) min = 1425;
+  var v = ('0'+Math.floor(min/60)).slice(-2)+':'+('0'+min%60).slice(-2);
+  if(v !== t.value.slice(0,5)) t.value = v;
+}, true);
+
 function tarjeta(L){
   var clase = 'card';
   if(L.con_parte && L.parte_estado==='pendiente') clase += ' con-parte';
