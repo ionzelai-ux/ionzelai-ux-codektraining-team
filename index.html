@@ -194,7 +194,9 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .per-btn{flex:1;min-width:80px;background:#141414;border:1px solid #2a2a2a;color:#bbb;font-size:12px;font-weight:600;padding:8px;border-radius:7px;cursor:pointer;font-family:inherit}
 .per-btn:hover{border-color:#B23A3A;color:#fff}
 .per-btn.per-on{background:#B23A3A;border-color:#B23A3A;color:#fff}
-.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.duo-chip{display:inline-block;font-size:11px;font-weight:700;background:#2a1f45;color:#c4b5fd;border:1px solid #5b3fd1;padding:1px 7px;border-radius:9px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.btn-cal.duo-on{color:#c4b5fd;border-color:#5b3fd1;background:#1c1530}
 .stat-card{background:#121212;border:1px solid #1f1f1f;border-radius:10px;padding:14px 8px;text-align:center}
 .stat-card.cogio{border-color:#1B7A3D}
 .stat-card.nocogio{border-color:#A32D2D}
@@ -306,6 +308,7 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
       </div>
       <button class="btn-cal" id="btnCal" onclick="abrirCalendarioFiltro()">📅 Filtrar día</button>
       <button class="btn-cal" id="btnFav" onclick="toggleFiltroFav()">☆ Favoritos</button>
+      <button class="btn-cal" id="btnDuo" onclick="toggleFiltroDuo()" title="Dúo: vienen dos personas">👥 Dúos</button>
     </div>
     <div id="filtroActivo" style="display:none"></div>
     <div id="bandeja"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
@@ -339,6 +342,7 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
       <div class="stat-card"><div class="stat-num" id="stTotal">0</div><div class="stat-lbl">Llamadas</div></div>
       <div class="stat-card cogio"><div class="stat-num" id="stCogio">0</div><div class="stat-lbl">Cogieron</div></div>
       <div class="stat-card nocogio"><div class="stat-num" id="stNoCogio">0</div><div class="stat-lbl">No cogieron</div></div>
+      <div class="stat-card"><div class="stat-num" id="stDuos" style="color:#c4b5fd">0</div><div class="stat-lbl">👥 Dúos</div></div>
     </div>
     <div id="informeList"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
   </div>
@@ -775,9 +779,11 @@ function renderBolsa(){
   });
   document.getElementById('bolsaFiltros').innerHTML = BOLSA.length ? fh : '';
   var lista = document.getElementById('bolsaLista');
-  var items = BOLSA.filter(function(l){ return !BOLSA_FILTRO || (l.interes||'Sin definir')===BOLSA_FILTRO; });
+  var items = BOLSA.filter(function(l){ return (!BOLSA_FILTRO || (l.interes||'Sin definir')===BOLSA_FILTRO) && pasaDuo(l); });
+  var nDuo = BOLSA.filter(esDuo).length;
+  document.getElementById('bolsaFiltros').innerHTML += BOLSA.length ? '<button class="'+(FILTRO_DUO?'on':'')+'" onclick="toggleFiltroDuo()">'+(FILTRO_DUO==='si'?'👥 Solo dúos':(FILTRO_DUO==='no'?'👤 Sin dúo':'👥 Dúos'))+' ('+nDuo+')</button>' : '';
   if(!BOLSA.length){ lista.innerHTML = '<div class="empty"><b>La bolsa está vacía</b>Cuando Jon mande leads a la bolsa, aparecerán aquí.</div>'; return; }
-  if(!items.length){ lista.innerHTML = '<div class="empty"><b>Nada con ese interés</b>Prueba con otro filtro.</div>'; return; }
+  if(!items.length){ lista.innerHTML = '<div class="empty"><b>Nada con ese filtro</b>Prueba con otro filtro.</div>'; return; }
   var resLbl = {cogio:'cogió', no_cogio:'no cogió', buzon:'buzón', apagado:'apagado/ocupado'};
   lista.innerHTML = items.map(function(l){
     var tags = '';
@@ -797,7 +803,7 @@ function renderBolsa(){
       '<div class="card-top">'+
         '<div class="av" style="background:#5b3fd1">'+iniciales(l.nombre)+'</div>'+
         '<div class="card-info">'+
-          '<div class="card-name">'+escapeHtml(l.nombre||'(sin nombre)')+'</div>'+
+          '<div class="card-name">'+escapeHtml(l.nombre||'(sin nombre)')+chipDuo(l)+'</div>'+
           '<div class="card-tags">'+tags+'</div>'+
         '</div>'+
       '</div>'+
@@ -870,6 +876,7 @@ function cargarInforme(){
     document.getElementById('stTotal').textContent = st.total;
     document.getElementById('stCogio').textContent = st.cogio;
     document.getElementById('stNoCogio').textContent = (st.no_cogio+st.buzon+st.apagado);
+    document.getElementById('stDuos').textContent = st.duos || 0;
     var partes = resp.partes||[];
     if(!partes.length){ lista.innerHTML='<div class="empty"><b>Sin llamadas</b>No hay partes en este periodo.</div>'; return; }
     var resLbl = {cogio:'✓ Cogió', no_cogio:'✗ No cogió', buzon:'📭 Buzón', apagado:'📴 Apagado'};
@@ -880,7 +887,7 @@ function cargarInforme(){
       html += '<div class="inf-card">'+
         '<div class="inf-res '+escapeHtml(p.resultado)+'">'+escapeHtml(resLbl[p.resultado]||p.resultado)+'</div>'+
         '<div class="inf-info">'+
-          '<div class="inf-nombre">'+escapeHtml(p.lead_nombre)+'</div>'+
+          '<div class="inf-nombre">'+escapeHtml(p.lead_nombre)+(p.duo?'<span class="duo-chip">👥 Dúo</span>':'')+'</div>'+
           '<div class="inf-meta">'+fecha+' '+hora+(p.lead_tel?' · '+escapeHtml(p.lead_tel):'')+'</div>'+
           (p.nota_entrenador?'<div class="inf-nota">'+escapeHtml(p.nota_entrenador)+'</div>':'')+
         '</div>'+
@@ -1013,6 +1020,26 @@ function toggleFiltroFav(){
   FILTRO_FAV = !FILTRO_FAV;
   renderBandeja();
 }
+// DÚO: el lead viene con otra persona (vale por dos). Filtro: todos -> solo dúos -> sin dúo -> todos
+var FILTRO_DUO = '';
+function esDuo(L){ return !!(L && L.duo); }
+function pasaDuo(L){ return !FILTRO_DUO || (FILTRO_DUO==='si' ? esDuo(L) : !esDuo(L)); }
+function chipDuo(L){
+  if(!esDuo(L)) return '';
+  return '<span class="duo-chip" title="Dúo: vienen dos personas'+(L.duo_nombre?' (con '+escapeHtml(L.duo_nombre)+')':'')+'">👥 Dúo</span>';
+}
+function toggleFiltroDuo(){
+  FILTRO_DUO = FILTRO_DUO==='' ? 'si' : (FILTRO_DUO==='si' ? 'no' : '');
+  renderBandeja();
+  if(typeof renderBolsa==='function' && typeof BOLSA!=='undefined') renderBolsa();
+}
+function _pintarBtnDuo(){
+  var btn = document.getElementById('btnDuo');
+  if(!btn) return;
+  var n = LEADS.filter(esDuo).length;
+  btn.textContent = FILTRO_DUO==='si' ? '👥 Solo dúos'+(n?' ('+n+')':'') : (FILTRO_DUO==='no' ? '👤 Sin dúo' : '👥 Dúos'+(n?' ('+n+')':''));
+  btn.classList.toggle('duo-on', !!FILTRO_DUO);
+}
 function _pintarBtnFav(){
   var btn = document.getElementById('btnFav');
   if(!btn) return;
@@ -1047,6 +1074,11 @@ function renderBandeja(){
   if(FILTRO_FAV){
     pendientes = pendientes.filter(esFav);
     hechos = hechos.filter(esFav);
+  }
+  _pintarBtnDuo();
+  if(FILTRO_DUO){
+    pendientes = pendientes.filter(pasaDuo);
+    hechos = hechos.filter(pasaDuo);
   }
 
   // Aplicar filtro por día si está activo
@@ -1087,7 +1119,7 @@ function renderBandeja(){
   if(vacio){
     if(FILTRO_FAV && !q && !FILTRO_DIA){
       h = '<div class="empty"><b>Aún no tienes favoritos</b>Pulsa la ☆ de una tarjeta para marcarla y verla aquí.</div>';
-    } else if(q || FILTRO_DIA || FILTRO_FAV){
+    } else if(q || FILTRO_DIA || FILTRO_FAV || FILTRO_DUO){
       h = '<div class="empty"><b>Nada coincide con el filtro</b>'+
           (q?'Prueba con otro texto en el buscador.':'')+
           (FILTRO_DIA?'<br>No tienes leads asignados a ese día.':'')+
@@ -1338,7 +1370,7 @@ function tarjeta(L){
     '<div class="card-top">'+
       '<div class="av">'+iniciales(L.nombre||L.tel)+'</div>'+
       '<div class="card-info">'+
-        '<div class="card-name">'+escapeHtml(L.nombre||'(sin nombre)')+'</div>'+
+        '<div class="card-name">'+escapeHtml(L.nombre||'(sin nombre)')+chipDuo(L)+'</div>'+
         '<div class="card-tags">'+tags+'</div>'+
       '</div>'+
     '</div>'+
@@ -1426,6 +1458,8 @@ function renderParte(){
         '<input type="time" id="pVisitaHora" step="900">'+
       '</div>'+
     '</div>'+
+    '<label class="toggle"><input type="checkbox" id="pDuo"'+(L.duo?' checked':'')+' onchange="document.getElementById(\'pDuoNombre\').style.display=this.checked?\'block\':\'none\'"> 👥 Dúo: viene con otra persona (pareja, amigo/a, familiar…)</label>'+
+    '<input type="text" id="pDuoNombre" placeholder="Con quién (opcional): su marido, una amiga…" value="'+escapeHtml(L.duo_nombre||'')+'" style="margin-top:6px;display:'+(L.duo?'block':'none')+'">'+
     '<label>Propuesta de próximo contacto (opcional)</label>'+
     '<div class="fila-2">'+
       '<input type="date" id="pProxFecha">'+
@@ -1498,7 +1532,9 @@ function enviarParte(){
     propuesta_visita_fecha: document.getElementById('pVisitaFecha').value,
     propuesta_visita_hora: document.getElementById('pVisitaHora').value,
     sugerir_wa: sugWa,
-    texto_wa: textoWa
+    texto_wa: textoWa,
+    duo: document.getElementById('pDuo').checked ? '1' : '',
+    duo_nombre: document.getElementById('pDuo').checked ? document.getElementById('pDuoNombre').value.trim() : ''
   };
 
   var idAsigEnviada = PARTE_ACTUAL.id_asignacion;
