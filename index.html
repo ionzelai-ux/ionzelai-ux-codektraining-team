@@ -56,6 +56,10 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .nota-rech{margin-top:10px;background:#1f0f0f;border-left:3px solid #B23A3A;border-radius:6px;padding:8px 10px;font-size:13px;color:#ffb8b8}
 .nota-rech b{color:#ff8080;font-weight:700;display:block;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
 .card-actions{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card-actions.con-wa{grid-template-columns:1fr 1fr 1fr}
+.card-actions.con-wa .btn-call,.card-actions.con-wa .btn-parte{font-size:13px;padding:11px 6px}
+.btn-wa{background:#128C4A;color:#fff;border:none;font-size:13px;font-weight:700;padding:11px 6px;border-radius:8px;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px}
+.btn-wa:hover{background:#16a558}
 .btn-call{background:#1B7A3D;color:#fff;border:none;font-size:14px;font-weight:700;padding:11px;border-radius:8px;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px}
 .btn-call:hover{background:#239848}
 .btn-parte{background:#B23A3A;color:#fff;border:none;font-size:14px;font-weight:700;padding:11px;border-radius:8px;cursor:pointer;font-family:inherit}
@@ -1348,6 +1352,8 @@ function tarjeta(L){
 
   // ---- Acciones ----
   var telLink = L.tel ? '<a class="btn-call" href="tel:'+telHref(L.tel)+'">📞 Llamar</a>' : '<button class="btn-call" disabled style="opacity:.4">Sin tel.</button>';
+  var wa = waHref(L.tel);
+  var btnWa = wa ? '<a class="btn-wa" href="'+wa+'" title="Abrir el chat de WhatsApp">💬 WhatsApp</a>' : '';
   var btnParte;
   if(L.con_parte && L.parte_estado==='pendiente'){
     btnParte = '<button class="btn-parte completado" disabled>✓ Parte enviado</button>';
@@ -1375,7 +1381,7 @@ function tarjeta(L){
       '</div>'+
     '</div>'+
     metricas + contacto + proximo + llamadasPrevias + notaJon + notaRech + historial +
-    '<div class="card-actions">'+telLink+btnParte+'</div>'+
+    '<div class="card-actions'+(btnWa?' con-wa':'')+'">'+telLink+btnWa+btnParte+'</div>'+
     (btnNoCogio ? '<div class="card-actions2">'+btnNoCogio+btnReagendar+'</div>' : '<div style="margin-top:6px">'+btnReagendar+'</div>')+
   '</div>';
 }
@@ -1387,6 +1393,17 @@ function telHref(tel){
   if(/^\d{9}$/.test(d)) return d;
   d = d.replace(/^(\+|00)/,'').replace(/\D/g,'');
   return '+'+d; // solo dígitos y +: no hace falta codificar
+}
+
+// Abre directamente el chat en la app de WhatsApp (igual que el CRM).
+// Españoles de 9 cifras con 34 delante; el resto, con su prefijo y sin +.
+function waHref(tel){
+  var d = String(tel||'').replace(/[^\d+]/g,'').replace(/^\++/,'');
+  if(d.indexOf('00')===0) d = d.slice(2);
+  d = d.replace(/\D/g,'');
+  if(!d) return '';
+  if(d.length===9 && /^[6789]/.test(d)) d = '34'+d;
+  return 'whatsapp://send?phone='+d;
 }
 
 function escapeHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
