@@ -166,7 +166,7 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .btn-reset:hover{background:#5a1010;border-color:#B23A3A;color:#fff}
 
 /* ---- MODAL PARTE ---- */
-.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:18px 14px;overflow-y:auto}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:18px 14px;overflow-y:auto}
 .modal-ov.open{display:flex}
 .modal{background:#121212;border:1.5px solid #2a2a2a;border-radius:14px;width:100%;max-width:520px;color:#ededed;padding:18px;position:relative;margin-top:20px}
 .modal-close{position:absolute;top:12px;right:12px;width:30px;height:30px;border:none;background:#1a1a1a;color:#bbb;border-radius:50%;cursor:pointer;font-size:15px;font-weight:700}
@@ -567,10 +567,19 @@ function cargarLeads(silencioso){
       return;
     }
     LEADS = r.leads || [];
+    _aplicarPendientes();
     _favsReconciliar();
     _cacheGuardar();
     renderBandeja();
   });
+}
+
+// Cambios hechos en pantalla que el servidor aún no ha confirmado: si llega
+// una recarga de la lista entre medias, se vuelven a aplicar encima.
+var _PEND = {};
+function _pendiente(idAsig, fn){ if(fn) _PEND[idAsig] = fn; else delete _PEND[idAsig]; }
+function _aplicarPendientes(){
+  LEADS.forEach(function(L){ if(_PEND[L.id_asignacion]) _PEND[L.id_asignacion](L); });
 }
 
 function iniciales(s){ if(!s) return '?'; var p=s.trim().split(/\s+/); return ((p[0]||'').charAt(0)+(p[1]||'').charAt(0)).toUpperCase()||'?'; }
@@ -695,24 +704,45 @@ function parteNoCogio(){
 function reintentarLlamada(){
   if(!_NOC_ID || !SESSION) return;
   var idAsig = _NOC_ID;
-  var err = document.getElementById('nocErr');
-  Array.prototype.forEach.call(document.querySelectorAll('#noCogioBody button'), function(b){ b.disabled = true; });
+  var L = LEADS.filter(function(x){return x.id_asignacion===idAsig;})[0];
+  if(!L) return;
+  // Se mueve YA en la pantalla (mismo cálculo que el servidor: antes de las 15:00
+  // pasa a esta tarde; después, a mañana por la mañana) y el aviso va por detrás.
+  // Antes se esperaba al servidor y en el móvil con datos tardaba varios segundos.
+  var antes = {fecha_llamada:L.fecha_llamada, franja:L.franja, hora:L.hora, intentos:L.intentos, historial:L.historial};
+  var tarde = new Date().getHours() < 15;
+  var hoy = _hoyISOTeam();
+  var d = new Date(), ahora = hoy+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+  L.fecha_llamada = tarde ? hoy : _sumarDiasISO(hoy, 1);
+  L.franja = tarde ? 'tarde' : 'manana';
+  L.hora = '';
+  L.intentos = [ahora];
+  L.historial = (L.historial||[]).concat([{fecha:ahora, tipo:'nocogio', txt:'no cogió'}]);
+  var nuevo = {fecha_llamada:L.fecha_llamada, franja:L.franja, intentos:L.intentos, historial:L.historial};
+  _pendiente(idAsig, function(X){ if(!(X.intentos||[]).length){ X.fecha_llamada=nuevo.fecha_llamada; X.franja=nuevo.franja; X.hora=''; X.intentos=nuevo.intentos; X.historial=nuevo.historial; } });
+  _cacheGuardar(); cerrarNoCogio(); renderBandeja();
+  toast(tarde ? '🔁 Pasado a esta tarde' : '🔁 Pasado a mañana por la mañana');
+  _syncReintento(idAsig, antes, L.nombre||L.tel||'el lead', 0);
+}
+function _syncReintento(idAsig, antes, nombre, vez){
   jsonp({action:'reintentar_asignacion', id_asignacion:idAsig, id_entrenador:SESSION.id}, function(r){
-    Array.prototype.forEach.call(document.querySelectorAll('#noCogioBody button'), function(b){ b.disabled = false; });
+    var reintentar = r && (r.error==='red' || r.error==='timeout' || r.error==='ocupado') && vez < 1;
+    if(!reintentar) _pendiente(idAsig, null);
+    var L = LEADS.filter(function(x){return x.id_asignacion===idAsig;})[0];
     // Un servidor sin esta función contesta con la lista general: no darlo por bueno
     if(r && r.ok && typeof r.franja !== 'undefined'){
-      LEADS.forEach(function(L){
-        if(L.id_asignacion===idAsig){ L.fecha_llamada = r.fecha_llamada; L.franja = r.franja; L.hora = ''; L.intentos = r.intentos || []; if(r.historial) L.historial = r.historial; }
-      });
-      _cacheGuardar(); cerrarNoCogio(); renderBandeja();
-      toast(r.franja==='tarde' ? '🔁 Pasado a esta tarde' : '🔁 Pasado a mañana por la mañana');
-    } else if(r && r.error==='ya_reintentado'){
-      cerrarNoCogio(); toast('Ya tenía un reintento: envía el parte de no cogido', true); abrirNoCogio(idAsig);
-    } else if(r && r.ok){
-      err.textContent = 'Falta actualizar el servidor. Avisa a Jon.';
-    } else {
-      err.textContent = 'No se ha podido: '+((r&&r.error)||'error')+'. Inténtalo otra vez.';
+      if(L){ L.fecha_llamada = r.fecha_llamada; L.franja = r.franja; L.hora = ''; L.intentos = r.intentos || []; if(r.historial) L.historial = r.historial; _cacheGuardar(); renderBandeja(); }
+      return;
     }
+    if(r && r.error==='ya_reintentado'){ cargarLeads(true); return; }   // ya estaba guardado
+    if(reintentar){
+      setTimeout(function(){ _syncReintento(idAsig, antes, nombre, vez+1); }, 4000);
+      return;
+    }
+    // No se ha podido: se deja la tarjeta como estaba para volver a pulsar
+    if(L){ L.fecha_llamada = antes.fecha_llamada; L.franja = antes.franja; L.hora = antes.hora; L.intentos = antes.intentos; L.historial = antes.historial; _cacheGuardar(); renderBandeja(); }
+    var msg = (r && r.ok) ? 'falta actualizar el servidor, avisa a Jon' : ((r&&r.error)||'sin conexión');
+    alert('No se ha guardado el reintento de "'+nombre+'" ('+msg+'). La tarjeta vuelve a su sitio: pulsa otra vez ❌ No cogió.');
   });
 }
 
@@ -974,12 +1004,20 @@ function _porHoraYEntrada(a, b){
 // móvil manda hasta que la hoja confirma el mismo valor.
 var FILTRO_FAV = false;
 var _FAVS_KEY = 'codek_team_favs';
+// Se guarda en memoria: antes se leía del almacenamiento del móvil en cada
+// comparación al ordenar (cientos de veces por pintado)
+var _FAVS_MEMO = null, _FAVS_MEMO_ID = null;
 function _favsLeer(){
   if(!SESSION) return {};
-  try{ var v = localStorage.getItem(_FAVS_KEY+'_'+SESSION.id); return v ? JSON.parse(v) : {}; }catch(e){ return {}; }
+  if(_FAVS_MEMO && _FAVS_MEMO_ID === SESSION.id) return _FAVS_MEMO;
+  var m = {};
+  try{ var v = localStorage.getItem(_FAVS_KEY+'_'+SESSION.id); m = v ? JSON.parse(v) : {}; }catch(e){ m = {}; }
+  _FAVS_MEMO = m; _FAVS_MEMO_ID = SESSION.id;
+  return m;
 }
 function _favsGuardar(m){
   if(!SESSION) return;
+  _FAVS_MEMO = m; _FAVS_MEMO_ID = SESSION.id;
   try{ localStorage.setItem(_FAVS_KEY+'_'+SESSION.id, JSON.stringify(m)); }catch(e){}
 }
 function esFav(L){
@@ -1554,20 +1592,37 @@ function enviarParte(){
     duo_nombre: document.getElementById('pDuo').checked ? document.getElementById('pDuoNombre').value.trim() : ''
   };
 
+  // Se cierra YA y la tarjeta pasa a "parte enviado"; el envío va por detrás.
+  // Si falla, la tarjeta vuelve a su sitio y se puede reenviar el mismo parte
+  // (el servidor no duplica: si ya lo tenía, devuelve el mismo).
   var idAsigEnviada = PARTE_ACTUAL.id_asignacion;
+  var L0 = PARTE_ACTUAL.lead || {};
+  var antes = {con_parte:L0.con_parte, parte_estado:L0.parte_estado};
+  LEADS.forEach(function(L){ if(L.id_asignacion===idAsigEnviada){ L.con_parte=true; L.parte_estado='pendiente'; } });
+  _pendiente(idAsigEnviada, function(X){ X.con_parte=true; X.parte_estado='pendiente'; });
+  _cacheGuardar();
+  PARTE_ENVIANDO = false;
+  btn.disabled=false;btn.textContent='Enviar parte a Jon';
+  cerrarParte(); renderBandeja();
+  toast('✓ Parte enviado a Jon');
+  _syncParte(params, idAsigEnviada, antes, L0.nombre||L0.tel||'el lead', 0);
+}
+function _syncParte(params, idAsig, antes, nombre, vez){
   jsonp(params, function(r){
-    PARTE_ENVIANDO = false;
-    btn.disabled=false;btn.textContent='Enviar parte a Jon';
-    if(r && r.ok){
-      // Marcar ya la tarjeta como "parte enviado" para que no se pueda repetir
-      LEADS.forEach(function(L){ if(L.id_asignacion===idAsigEnviada){ L.con_parte=true; L.parte_estado='pendiente'; } });
-      _cacheGuardar(); renderBandeja();
-      document.getElementById('modalParteBody').innerHTML =
-        '<div class="ok-msg"><div class="check">✓</div><h3>Parte enviado</h3><p>Jon lo revisará y actualizará la ficha del lead. Gracias.</p></div>'+
-        '<button class="btn-enviar" onclick="cerrarParte();cargarLeads(true)">Cerrar</button>';
-    } else {
-      if(r && (r.error==='timeout' || r.error==='red')) err.textContent = 'El servidor tarda en responder. Puede que se haya enviado: cierra, pulsa ↻ Actualizar y comprueba antes de repetirlo.';
-      else err.textContent = (r && r.error) ? ('Error: '+r.error) : 'No se ha podido enviar. Inténtalo de nuevo.';
+    var reintentar = r && (r.error==='red' || r.error==='timeout' || r.error==='ocupado') && vez < 1;
+    if(!reintentar) _pendiente(idAsig, null);
+    if(r && r.ok) return;
+    if(reintentar){
+      setTimeout(function(){ _syncParte(params, idAsig, antes, nombre, vez+1); }, 4000);
+      return;
+    }
+    LEADS.forEach(function(L){ if(L.id_asignacion===idAsig){ L.con_parte=antes.con_parte; L.parte_estado=antes.parte_estado; } });
+    _cacheGuardar(); renderBandeja();
+    var msg = (r && r.error) ? r.error : 'sin conexión';
+    if(confirm('No se ha podido enviar el parte de "'+nombre+'" ('+msg+').\n\n¿Lo vuelvo a intentar ahora? (lo que escribiste se mantiene)')){
+      _pendiente(idAsig, function(X){ X.con_parte=true; X.parte_estado='pendiente'; });
+      _aplicarPendientes(); _cacheGuardar(); renderBandeja();
+      _syncParte(params, idAsig, antes, nombre, 0);
     }
   });
 }
