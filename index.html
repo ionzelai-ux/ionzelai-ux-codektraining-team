@@ -568,7 +568,7 @@ function cargarLeads(silencioso){
     }
     LEADS = r.leads || [];
     _aplicarPendientes();
-    _favsReconciliar();
+    _favsReconciliar(!!r.favs_lead);
     _cacheGuardar();
     renderBandeja();
   });
@@ -1032,30 +1032,54 @@ function _favPrimero(cmp){
     return cmp(a, b);
   };
 }
+// v15: el favorito es de la PERSONA (lead) y es el mismo que en el CRM.
+// Si la misma persona sale en dos tarjetas, la estrella cambia en las dos.
+var _FAV_ENVIO = {};   // asignaciones con el cambio aún sin confirmar
+function _mismasPersona(L){ return LEADS.filter(function(x){ return x.id_lead === L.id_lead; }); }
 function toggleFav(idAsig){
   var L = LEADS.filter(function(x){return x.id_asignacion===idAsig;})[0];
   if(!L || !SESSION) return;
   var nuevo = !esFav(L);
-  var m = _favsLeer(); m[idAsig] = nuevo; _favsGuardar(m);
+  var grupo = _mismasPersona(L);
+  var m = _favsLeer(); grupo.forEach(function(x){ m[x.id_asignacion] = nuevo; }); _favsGuardar(m);
   renderBandeja();
+  _enviarFav(idAsig, nuevo, grupo, true);
+}
+function _enviarFav(idAsig, nuevo, grupo, avisar){
+  _FAV_ENVIO[idAsig] = 1;
   jsonp({action:'marcar_favorito', id_asignacion:idAsig, id_entrenador:SESSION.id, fav:nuevo?'1':'0'}, function(r){
-    // Solo si la hoja ya sabe de favoritos (v13) se fía de ella
+    delete _FAV_ENVIO[idAsig];
+    var m2 = _favsLeer();
+    // Solo si la hoja ya sabe de favoritos (v13+) se fía de ella
     if(r && r.ok && typeof r.favorito !== 'undefined'){
-      L.favorito = !!r.favorito;
-      _cacheGuardar();
-      var m2 = _favsLeer();
-      if(m2[idAsig] === L.favorito){ delete m2[idAsig]; _favsGuardar(m2); }
+      grupo.forEach(function(x){
+        x.favorito = !!r.favorito;
+        if(m2[x.id_asignacion] === x.favorito) delete m2[x.id_asignacion];
+      });
+      _favsGuardar(m2); _cacheGuardar(); renderBandeja();
+    } else if(r && !r.ok && avisar && r.error !== 'red' && r.error !== 'timeout'){
+      // El servidor lo ha rechazado: la estrella vuelve como estaba
+      grupo.forEach(function(x){ delete m2[x.id_asignacion]; });
+      _favsGuardar(m2); renderBandeja();
+      toast('No se ha podido guardar la estrella: '+(r.error||'error'), true);
     }
+    // Sin conexión: se queda en el móvil y se vuelve a enviar al recargar la lista
   });
 }
-// Tras cargar de la hoja: lo que ya coincide no hace falta guardarlo aparte
-function _favsReconciliar(){
+// Tras cargar de la hoja. Con la v15 (favs_lead) manda la hoja, que es la que
+// comparten la app y el CRM; antes, lo que quedó solo en el móvil se sube.
+function _favsReconciliar(favsLead){
   var m = _favsLeer(), cambia = false;
   LEADS.forEach(function(L){
-    if(typeof L.favorito !== 'undefined' && m.hasOwnProperty(L.id_asignacion) && !!m[L.id_asignacion] === !!L.favorito){
-      delete m[L.id_asignacion]; cambia = true;
-    }
+    var id = L.id_asignacion;
+    if(!m.hasOwnProperty(id) || _FAV_ENVIO[id]) return;
+    if(typeof L.favorito !== 'undefined' && !!m[id] === !!L.favorito){ delete m[id]; cambia = true; return; }
+    // Cambio que se quedó en el móvil sin llegar a la hoja (sin cobertura): se reenvía
+    if(favsLead) _enviarFav(id, !!m[id], _mismasPersona(L), false);
   });
+  // Estrellas de llamadas que ya no están en la lista: no hace falta guardarlas
+  var vivos = {}; LEADS.forEach(function(L){ vivos[L.id_asignacion] = 1; });
+  Object.keys(m).forEach(function(id){ if(!vivos[id] && !_FAV_ENVIO[id]){ delete m[id]; cambia = true; } });
   if(cambia) _favsGuardar(m);
 }
 function toggleFiltroFav(){
