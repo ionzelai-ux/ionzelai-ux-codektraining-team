@@ -579,7 +579,8 @@ function cargarLeads(silencioso){
 var _PEND = {};
 function _pendiente(idAsig, fn){ if(fn) _PEND[idAsig] = fn; else delete _PEND[idAsig]; }
 function _aplicarPendientes(){
-  LEADS.forEach(function(L){ if(_PEND[L.id_asignacion]) _PEND[L.id_asignacion](L); });
+  // Si la función devuelve false, la tarjeta se quita (p. ej. mandada a la bolsa)
+  LEADS = LEADS.filter(function(L){ var f = _PEND[L.id_asignacion]; return !f || f(L) !== false; });
 }
 
 function iniciales(s){ if(!s) return '?'; var p=s.trim().split(/\s+/); return ((p[0]||'').charAt(0)+(p[1]||'').charAt(0)).toUpperCase()||'?'; }
@@ -681,11 +682,13 @@ function abrirNoCogio(idAsig){
     var tarde = new Date().getHours() < 15;
     h = '<h3>❌ No ha cogido</h3><p class="sub-modal">'+nombre+'</p>'+
       '<button class="btn-enviar" style="background:#1a1a08;border:1.5px solid #BA7517;color:#FAC775;margin-top:6px" onclick="reintentarLlamada()">🔁 Reintentar más tarde<br><span style="font-size:12px;font-weight:600">Pasa a '+(tarde?'esta tarde':'mañana por la mañana')+' con la marca de 1 intento</span></button>'+
-      '<button class="btn-enviar" style="margin-top:10px" onclick="parteNoCogio()">📝 Dar por no cogido<br><span style="font-size:12px;font-weight:600">Se envía el parte a Jon</span></button>';
+      '<button class="btn-enviar" style="margin-top:10px" onclick="parteNoCogio()">📝 Dar por no cogido<br><span style="font-size:12px;font-weight:600">Se envía el parte a Jon</span></button>'+
+      _btnABolsa();
   } else {
     h = '<h3>❌ Segundo intento sin respuesta</h3><p class="sub-modal">'+nombre+'</p>'+
       '<p style="font-size:13px;color:#bbb;margin:8px 0 4px">Ya lo intentaste a las '+escapeHtml(_fmtIntento(intentos[0]))+'. Ahora toca enviar el parte de "no cogió" a Jon.</p>'+
-      '<button class="btn-enviar" onclick="parteNoCogio()">📝 Enviar parte de no cogido</button>';
+      '<button class="btn-enviar" onclick="parteNoCogio()">📝 Enviar parte de no cogido</button>'+
+      _btnABolsa();
   }
   document.getElementById('noCogioBody').innerHTML = h + '<div class="err" id="nocErr"></div>';
   document.getElementById('modalNoCogio').classList.add('open');
@@ -743,6 +746,39 @@ function _syncReintento(idAsig, antes, nombre, vez){
     if(L){ L.fecha_llamada = antes.fecha_llamada; L.franja = antes.franja; L.hora = antes.hora; L.intentos = antes.intentos; L.historial = antes.historial; _cacheGuardar(); renderBandeja(); }
     var msg = (r && r.ok) ? 'falta actualizar el servidor, avisa a Jon' : ((r&&r.error)||'sin conexión');
     alert('No se ha guardado el reintento de "'+nombre+'" ('+msg+'). La tarjeta vuelve a su sitio: pulsa otra vez ❌ No cogió.');
+  });
+}
+
+// ---- No cogió -> MANDAR A LA BOLSA (Apps Script v16) ----
+// Sale de tu lista al momento y queda libre en la bolsa para cualquier entrenador.
+// No hay parte que revisar: la llamada queda anotada en el lead y en tu informe.
+function _btnABolsa(){
+  return '<button class="btn-enviar" style="margin-top:10px;background:#1d1530;border:1.5px solid #7c5cd6;color:#c4b5fd" onclick="mandarABolsa()">🎯 Mandar a la bolsa<br><span style="font-size:12px;font-weight:600">Sale de tu lista y otro entrenador lo puede coger</span></button>';
+}
+function mandarABolsa(){
+  if(!_NOC_ID || !SESSION) return;
+  var idAsig = _NOC_ID;
+  var L = LEADS.filter(function(x){return x.id_asignacion===idAsig;})[0];
+  if(!L) return;
+  var params = {action:'a_bolsa', id_asignacion:idAsig, id_entrenador:SESSION.id, pin:SESSION.pin||'', nota_entrenador:_notaConIntentos('', L)};
+  var nombre = L.nombre||L.tel||'el lead';
+  LEADS = LEADS.filter(function(x){ return x.id_asignacion!==idAsig; });
+  _pendiente(idAsig, function(){ return false; });
+  _cacheGuardar(); cerrarNoCogio(); renderBandeja();
+  toast('🎯 '+nombre+' mandado a la bolsa');
+  _syncABolsa(params, idAsig, L, nombre, 0);
+}
+function _syncABolsa(params, idAsig, L, nombre, vez){
+  jsonp(params, function(r){
+    var reintentar = r && (r.error==='red' || r.error==='timeout' || r.error==='ocupado') && vez < 1;
+    if(reintentar){ setTimeout(function(){ _syncABolsa(params, idAsig, L, nombre, vez+1); }, 4000); return; }
+    _pendiente(idAsig, null);
+    if(r && r.ok && r.en_bolsa) return;   // hecho
+    // No se ha podido: la tarjeta vuelve a su sitio
+    if(!LEADS.some(function(x){ return x.id_asignacion===idAsig; })) LEADS.push(L);
+    _cacheGuardar(); renderBandeja();
+    var msg = (r && r.ok) ? 'falta actualizar el servidor, avisa a Jon' : ((r&&r.error)||'sin conexión');
+    alert('No se ha podido mandar "'+nombre+'" a la bolsa ('+msg+'). La tarjeta vuelve a tu lista.');
   });
 }
 
