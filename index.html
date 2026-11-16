@@ -200,6 +200,8 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .per-btn.per-on{background:#B23A3A;border-color:#B23A3A;color:#fff}
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
 .duo-chip{display:inline-block;font-size:11px;font-weight:700;background:#2a1f45;color:#c4b5fd;border:1px solid #5b3fd1;padding:1px 7px;border-radius:9px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.sel-estado{appearance:auto;-webkit-appearance:auto;max-width:100%}
+.sel-estado option{background:#141414;color:#ddd}
 .btn-cal.duo-on{color:#c4b5fd;border-color:#5b3fd1;background:#1c1530}
 .stat-card{background:#121212;border:1px solid #1f1f1f;border-radius:10px;padding:14px 8px;text-align:center}
 .stat-card.cogio{border-color:#1B7A3D}
@@ -313,6 +315,7 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
       <button class="btn-cal" id="btnCal" onclick="abrirCalendarioFiltro()">📅 Filtrar día</button>
       <button class="btn-cal" id="btnFav" onclick="toggleFiltroFav()">☆ Favoritos</button>
       <button class="btn-cal" id="btnDuo" onclick="toggleFiltroDuo()" title="Dúo: vienen dos personas">👥 Dúos</button>
+      <select class="btn-cal sel-estado" id="selEstado" onchange="filtrarEstado(this.value)" title="Filtrar por estado"><option value="">🏷 Todos los estados</option></select>
     </div>
     <div id="filtroActivo" style="display:none"></div>
     <div id="bandeja"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
@@ -1142,6 +1145,34 @@ function _pintarBtnDuo(){
   btn.textContent = FILTRO_DUO==='si' ? '👥 Solo dúos'+(n?' ('+n+')':'') : (FILTRO_DUO==='no' ? '👤 Sin dúo' : '👥 Dúos'+(n?' ('+n+')':''));
   btn.classList.toggle('duo-on', !!FILTRO_DUO);
 }
+// ESTADO: filtrar la lista por el estado del lead (E1, E2, E2.1…). '' = todos
+var FILTRO_ESTADO = '';
+var _ORDEN_ESTADOS = ['E0','E1','E2','E2.1','E3','E4','E5','E5.1','E6','E7','E8','E9','ANT'];
+var _NOMBRE_ESTADO = {'E0':'Nuevo lead','E1':'Contactado','E2':'Interés WAS','E2.1':'Volver a contactar','E3':'No contesta','E4':'Quiere reservar','E5':'Reserva confirmada','E5.1':'Reagendar','E6':'Ha visitado','E7':'Quiere contratar','E8':'Cliente','E9':'Basura','ANT':'Antiguo · revisar'};
+function _estadoDe(L){ return String((L && L.estado) || '').trim(); }
+function pasaEstado(L){ return !FILTRO_ESTADO || (FILTRO_ESTADO==='-' ? !_estadoDe(L) : _estadoDe(L)===FILTRO_ESTADO); }
+function filtrarEstado(v){ FILTRO_ESTADO = v || ''; renderBandeja(); }
+function _pintarSelEstado(){
+  var sel = document.getElementById('selEstado');
+  if(!sel) return;
+  var n = {}, sin = 0;
+  LEADS.forEach(function(L){ var e=_estadoDe(L); if(e) n[e]=(n[e]||0)+1; else sin++; });
+  var ks = Object.keys(n).sort(function(a,b){
+    var ia=_ORDEN_ESTADOS.indexOf(a), ib=_ORDEN_ESTADOS.indexOf(b);
+    if(ia<0) ia=99; if(ib<0) ib=99;
+    return ia-ib || (a<b?-1:a>b?1:0);
+  });
+  // Si el estado elegido ya no está en la lista, se mantiene (con 0) para que se vea qué filtra
+  if(FILTRO_ESTADO && FILTRO_ESTADO!=='-' && !n[FILTRO_ESTADO]){ n[FILTRO_ESTADO]=0; ks.push(FILTRO_ESTADO); }
+  var h = '<option value="">🏷 Todos los estados ('+LEADS.length+')</option>';
+  ks.forEach(function(e){
+    h += '<option value="'+escapeHtml(e)+'">'+escapeHtml(e)+(_NOMBRE_ESTADO[e]?' · '+_NOMBRE_ESTADO[e]:'')+' ('+n[e]+')</option>';
+  });
+  if(sin || FILTRO_ESTADO==='-') h += '<option value="-">Sin estado ('+sin+')</option>';
+  sel.innerHTML = h;
+  sel.value = FILTRO_ESTADO;
+  sel.classList.toggle('on', !!FILTRO_ESTADO);
+}
 function _pintarBtnFav(){
   var btn = document.getElementById('btnFav');
   if(!btn) return;
@@ -1182,6 +1213,11 @@ function renderBandeja(){
     pendientes = pendientes.filter(pasaDuo);
     hechos = hechos.filter(pasaDuo);
   }
+  _pintarSelEstado();
+  if(FILTRO_ESTADO){
+    pendientes = pendientes.filter(pasaEstado);
+    hechos = hechos.filter(pasaEstado);
+  }
 
   // Aplicar filtro por día si está activo
   if(FILTRO_DIA){
@@ -1219,12 +1255,13 @@ function renderBandeja(){
   var h = '';
   var vacio = !dias.length && !sinFecha.length && !hechos.length;
   if(vacio){
-    if(FILTRO_FAV && !q && !FILTRO_DIA){
+    if(FILTRO_FAV && !q && !FILTRO_DIA && !FILTRO_ESTADO && !FILTRO_DUO){
       h = '<div class="empty"><b>Aún no tienes favoritos</b>Pulsa la ☆ de una tarjeta para marcarla y verla aquí.</div>';
-    } else if(q || FILTRO_DIA || FILTRO_FAV || FILTRO_DUO){
+    } else if(q || FILTRO_DIA || FILTRO_FAV || FILTRO_DUO || FILTRO_ESTADO){
       h = '<div class="empty"><b>Nada coincide con el filtro</b>'+
           (q?'Prueba con otro texto en el buscador.':'')+
           (FILTRO_DIA?'<br>No tienes leads asignados a ese día.':'')+
+          (FILTRO_ESTADO?'<br>No tienes llamadas en ese estado. <a href="#" onclick="filtrarEstado(\'\');return false" style="color:#FAC775">Ver todos los estados</a>':'')+
           '</div>';
     } else {
       h = '<div class="empty"><b>¡Sin leads asignados!</b>Cuando Jon te asigne llamadas aparecerán aquí. También puedes coger leads de la <a href="#" onclick="mostrarTab(\'bolsa\');return false" style="color:#c4b5fd">🎯 Bolsa</a>.</div>';
