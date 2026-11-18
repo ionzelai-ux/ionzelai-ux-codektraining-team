@@ -1363,12 +1363,10 @@ function renderBandeja(){
   }
   b.innerHTML = h;
 }
-// Qué ficha está abierta (HOY por defecto). Se recuerda mientras la app esté abierta.
-var SEC_BANDEJA = 'hoy';
-try{ var _sb = sessionStorage.getItem('codek_team_sec'); if(_sb !== null) SEC_BANDEJA = _sb; }catch(e){}
+// Qué ficha está abierta. Al abrir la app, ninguna (Jon lo quiere así): solo se ven las tres fichas.
+var SEC_BANDEJA = '';
 function abrirSeccion(k){
   SEC_BANDEJA = (SEC_BANDEJA === k) ? '' : k;
-  try{ sessionStorage.setItem('codek_team_sec', SEC_BANDEJA); }catch(e){}
   renderBandeja();
 }
 
