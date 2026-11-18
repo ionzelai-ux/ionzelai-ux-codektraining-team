@@ -233,7 +233,8 @@ main{max-width:680px;margin:0 auto;padding:18px 14px 60px}
 .bolsa-cupo{font-size:12px;color:#bbb;background:#0f0f0f;border:1px solid #2a2a2a;border-radius:10px;padding:9px 12px;margin-bottom:12px}
 .bolsa-cupo b{color:#fff}
 .bolsa-cupo.lleno{border-color:#B23A3A;color:#ffb0b0}
-.tipo-prox{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.tipo-prox{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px}
+.tipo-prox-ayuda{font-size:12px;color:#999;margin:4px 0 6px}
 .tipo-prox button{background:#141414;border:1.5px solid #2a2a2a;color:#bbb;font-size:13px;font-weight:700;padding:9px 6px;border-radius:8px;cursor:pointer;font-family:inherit}
 .tipo-prox button.on{background:#12301f;border-color:#1F8A4C;color:#7EE2A8}
 .bolsa-filtros{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
@@ -1615,16 +1616,20 @@ function renderParte(){
     '</div>'+
     '<label class="toggle"><input type="checkbox" id="pDuo"'+(L.duo?' checked':'')+' onchange="document.getElementById(\'pDuoNombre\').style.display=this.checked?\'block\':\'none\'"> 👥 Dúo: viene con otra persona (pareja, amigo/a, familiar…)</label>'+
     '<input type="text" id="pDuoNombre" placeholder="Con quién (opcional): su marido, una amiga…" value="'+escapeHtml(L.duo_nombre||'')+'" style="margin-top:6px;display:'+(L.duo?'block':'none')+'">'+
-    '<label>Propuesta de próximo contacto (opcional)</label>'+
+    '<label>¿Qué toca después con este cliente?</label>'+
     '<div class="tipo-prox" id="pProxTipoBox">'+
-      '<button type="button" class="on" data-t="llamada" onclick="elegirTipoProx(\'llamada\')">📞 Llamada</button>'+
-      '<button type="button" data-t="mensaje" onclick="elegirTipoProx(\'mensaje\')">💬 Mensaje de WhatsApp</button>'+
+      '<button type="button" class="on" data-t="" onclick="elegirTipoProx(\'\')">Nada por ahora</button>'+
+      '<button type="button" data-t="llamada" onclick="elegirTipoProx(\'llamada\')">📞 Volver a llamar</button>'+
+      '<button type="button" data-t="mensaje" onclick="elegirTipoProx(\'mensaje\')">💬 Escribirle por WhatsApp</button>'+
     '</div>'+
-    '<div class="fila-2">'+
-      '<input type="date" id="pProxFecha">'+
-      '<input type="time" id="pProxHora">'+
+    '<div id="pProxCampos" style="display:none">'+
+      '<div class="tipo-prox-ayuda" id="pProxAyuda"></div>'+
+      '<div class="fila-2" id="pProxFila">'+
+        '<input type="date" id="pProxFecha">'+
+        '<input type="time" id="pProxHora">'+
+      '</div>'+
+      '<input type="text" id="pProxNota" placeholder="Motivo" style="margin-top:6px">'+
     '</div>'+
-    '<input type="text" id="pProxNota" placeholder="Motivo del próximo contacto" style="margin-top:6px">'+
     '<label class="toggle"><input type="checkbox" id="pSugWa"> Sugiere que Jon le mande un WhatsApp</label>'+
     '<div id="waBox" style="display:none">'+
       '<label>Texto sugerido del WhatsApp</label>'+
@@ -1632,11 +1637,11 @@ function renderParte(){
     '</div>'+
     '<div class="err" id="parteErr"></div>'+
     '<button class="btn-enviar" id="parteEnviar" onclick="enviarParte()">Enviar parte a Jon</button>';
-  PROX_TIPO = 'llamada';
+  PROX_TIPO = '';
   document.getElementById('pSugWa').addEventListener('change', function(e){
     document.getElementById('waBox').style.display = e.target.checked ? 'block' : 'none';
     // Si se sugiere WhatsApp, el próximo contacto pasa a ser un mensaje (se puede cambiar)
-    elegirTipoProx(e.target.checked ? 'mensaje' : 'llamada');
+    if(e.target.checked && PROX_TIPO !== 'mensaje') elegirTipoProx('mensaje');
   });
 }
 function elegirResultado(r, btn){
@@ -1663,27 +1668,51 @@ function _notaConIntentos(nota, L){
   if(!h.length || /Antes:/.test(nota)) return nota;
   return (nota ? nota+' · ' : '') + '(Antes: '+_historialTxt(h)+')';
 }
-// Próximo contacto: llamada o mensaje de WhatsApp (el mensaje le sale a Jon en la pestaña Mensajes del CRM)
-var PROX_TIPO = 'llamada';
+// Próximo contacto: nada / volver a llamar (Agenda de llamadas del CRM) /
+// escribirle por WhatsApp (pestaña Mensajes del CRM). Por defecto: nada.
+var PROX_TIPO = '';
+function _mananaISOTeam(){
+  var p = _hoyISOTeam().split('-'), d = new Date(+p[0], +p[1]-1, +p[2]+1);
+  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+}
 function elegirTipoProx(t){
-  PROX_TIPO = t === 'mensaje' ? 'mensaje' : 'llamada';
+  PROX_TIPO = (t === 'mensaje' || t === 'llamada') ? t : '';
   var box = document.getElementById('pProxTipoBox'); if(!box) return;
   Array.prototype.forEach.call(box.querySelectorAll('button'), function(b){ b.classList.toggle('on', b.getAttribute('data-t') === PROX_TIPO); });
-  var n = document.getElementById('pProxNota');
-  if(n) n.placeholder = PROX_TIPO === 'mensaje' ? 'Qué hay que escribirle' : 'Motivo del próximo contacto';
+  var campos = document.getElementById('pProxCampos'), f = document.getElementById('pProxFecha'),
+      h = document.getElementById('pProxHora'), n = document.getElementById('pProxNota'), ay = document.getElementById('pProxAyuda');
+  campos.style.display = PROX_TIPO ? 'block' : 'none';
+  if(!PROX_TIPO){ f.value = ''; h.value = ''; n.value = ''; return; }
+  if(!f.value) f.value = _mananaISOTeam();
+  if(PROX_TIPO === 'mensaje'){
+    h.value = ''; h.style.display = 'none';
+    document.getElementById('pProxFila').style.gridTemplateColumns = '1fr';
+    ay.textContent = '¿Qué día hay que escribirle? Le saldrá a Jon ese día en Mensajes.';
+    n.placeholder = 'Qué hay que escribirle (ej.: preguntar si lo ha hablado con su marido)';
+  } else {
+    h.style.display = '';
+    document.getElementById('pProxFila').style.gridTemplateColumns = '';
+    ay.textContent = '¿Qué día (y hora, si la sabes) hay que volver a llamarle?';
+    n.placeholder = 'Motivo de la llamada';
+  }
 }
 var PARTE_ENVIANDO = false; // evita mandar el mismo parte dos veces por doble toque
 function enviarParte(){
   var err = document.getElementById('parteErr'); err.textContent='';
   if(PARTE_ENVIANDO) return;
   if(!PARTE_ACTUAL.resultado){err.textContent='Marca primero qué pasó al llamar.';return;}
+  if(PROX_TIPO && !document.getElementById('pProxFecha').value){
+    err.textContent = PROX_TIPO==='mensaje' ? 'Pon qué día hay que escribirle (o elige "Nada por ahora").' : 'Pon qué día hay que volver a llamarle (o elige "Nada por ahora").';
+    return;
+  }
   var btn = document.getElementById('parteEnviar');
   PARTE_ENVIANDO = true;
   btn.disabled=true;btn.textContent='Enviando…';
 
   var proxFecha = document.getElementById('pProxFecha').value;
   var proxHora = document.getElementById('pProxHora').value;
-  var proxTipo = proxFecha ? PROX_TIPO : '';
+  var proxTipo = (proxFecha && PROX_TIPO) ? PROX_TIPO : '';
+  if(!proxTipo){ proxFecha = ''; proxHora = ''; }
   var proxNota = document.getElementById('pProxNota').value.trim();
   var sugWa = document.getElementById('pSugWa').checked ? 'true' : 'false';
   var textoWa = document.getElementById('pTextoWa').value.trim();
